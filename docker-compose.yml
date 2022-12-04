@@ -1,0 +1,12 @@
+version: '3'  
+
+services:
+
+  proxy:
+    image: ozzyboshi/pouetdownloader:latest
+    container_name: pouetdownloader
+    build: ./httpserver
+    ports:
+      - 9999:9999
+    restart: always
+
