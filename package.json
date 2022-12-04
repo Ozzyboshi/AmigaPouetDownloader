@@ -1,0 +1,13 @@
+{
+  "name": "http2https_downloader",
+  "version": "1.0.0",
+  "description": "Http to https downloader",
+  "author": "Alessio Garzi <gun101@email.it>",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.16.1"
+  }
+}
