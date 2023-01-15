@@ -3,7 +3,36 @@
 
 /*address ibrowse show*/
 
-PARSE ARG pouetid
+PARSE ARG pouetid pouetidend
+IF pouetidend < pouetid THEN DO
+   pouetidend=pouetid
+END
+
+if exists('pouet:') == 0 THEN DO
+  SAY 'Please assign pouet:'
+  EXIT
+END
+
+address command 'getenv pouetproxy > ram:pouetproxy.txt'
+open(ReqF,'ram:pouetproxy.txt','r')
+proxyaddress = readln(ReqF)
+close(ReqF)
+
+if length(proxyaddress) < 4 THEN DO
+  SAY 'NO PROXY ADDRESS FOUND, SET ONE,example setenv pouetproxy=x.x.x.x:9999'
+  EXIT
+END
+
+if proxyaddress == 'object not found' THEN DO
+  SAY 'NO PROXY ADDRESS FOUND, SET ONE,example setenv pouetproxy=x.x.x.x:9999'
+  EXIT
+END
+
+SAY 'Using proxy address 'proxyaddress
+
+SAY 'Scraping pouet from id 'pouetid' to 'pouetidend
+
+DO pouetid = pouetid TO pouetidend
 
 if exists('ram:pouettmp.html') THEN DO
   SAY 'Delete old pouet tmp files...'
@@ -11,11 +40,12 @@ if exists('ram:pouettmp.html') THEN DO
   address command cmddel
 END
 
-DESTDIR='SD0:'
+DESTDIR='pouet:'
 /*SAY "enter pouet id"
 PULL pouetid*/
 
-cline = 'c:wget  --no-check-certificate --quiet http://www.pouet.net/prod.php?which='pouetid' -O ram:pouettmp.html'
+cline = 'c:wget --quiet -O ram:pouettmp.html 'proxyaddress'/https://www.pouet.net/prod.php?which='pouetid
+
 address command cline
 MyReturnCode = RC
 if (MyReturnCode = 0) then
@@ -132,7 +162,7 @@ if (MyReturnCode = 0) then
    ELSE DO
     SAY 'Not an Amiga production... exit'
     EXIT
-   END	
+   END   
 
 
    
@@ -155,7 +185,7 @@ if (MyReturnCode = 0) then
        if sceneorg == 'https://files.scene.org/view/' THEN DO
        sceneorg2 = substr(pickstripped,29)
        SAY 'Scene is 'sceneorg
-       SAY 'Sene 2 is 'sceneorg2
+       SAY 'Scene 2 is 'sceneorg2
        pickstripped  = 'https://files.scene.org/get/'sceneorg2
        END
 
@@ -168,34 +198,48 @@ if (MyReturnCode = 0) then
        SAY 'Creating directory:' makedirectory
        address command makedirectory
 
+       defaultaction=1
        if extension == ".adf" THEN DO
          gotourl save pickstripped
          SAY "Downloading an ADF file"
-         download = 'wget --quiet -t 1 --no-check-certificate -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 10.0.0.14:9999/'pickstripped
-         download = 'wget -nc --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 10.0.0.14:9999/'pickstripped
+         download = 'wget --quiet -t 1 --no-check-certificate -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         download = 'wget -nc --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          address command download
          bs = close(ReqF)
-         EXIT
+         defaultaction=0
 
        END
 
        if extension == ".lha" THEN DO
          SAY 'This is an lha compressed file'
-         download = 'wget --no-check-certificate -O ram:pouetdownload.lha 10.0.0.14:9999/'pickstripped
+         download = 'wget --no-check-certificate -O ram:pouetdownload.lha 'proxyaddress'/'pickstripped
          address command download
          unlha = 'lha x ram:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
          address command unlha
          say unlha
          bs = close(ReqF)
-         EXIT
+         defaultaction=0
 
        END
+       
+       if extension == ".DMS" THEN DO
+         SAY 'This is a dms compressed file'
+         download = 'wget --no-check-certificate -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         address command download
+         undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
+         address command undms
+         say undms
+         bs = close(ReqF)
+         defaultaction=0
+
+       END
+
 
 
        if extension == ".zip" THEN DO
 
          SAY "This is a zipped file, unzipping..."
-         download = 'wget --quiet -O ram:pouetdownload.zip 10.0.0.14:9999/'pickstripped
+         download = 'wget --quiet -O ram:pouetdownload.zip 'proxyaddress'/'pickstripped
          address command download
          /*if RC = 0 THEN
            SAY 'Download succeded'
@@ -211,17 +255,17 @@ if (MyReturnCode = 0) then
          address command unzip
          
          bs = close(ReqF)
-         EXIT
+         defaultaction=0
 
        END
 
-
-	   SAY "Downloading default file, probably executable"
-       download = 'wget -nc --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 10.0.0.14:9999/'pickstripped
-       SAY download
-       address command download
-       bs = close(ReqF)
-
+       IF defaultaction==1 THEN DO
+         SAY "Downloading default file, probably executable"
+         download = 'wget -nc --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         SAY download
+         address command download
+         bs = close(ReqF)
+       END
 
 
 
@@ -232,3 +276,4 @@ if (MyReturnCode = 0) then
     SAY 'Download Failed'
   end
 SAY 'response >' MyReturnCode
+END /* END LOOP */
