@@ -202,7 +202,7 @@ if (MyReturnCode = 0) then
        if extension == ".adf" THEN DO
          gotourl save pickstripped
          SAY "Downloading an ADF file"
-         download = 'wget --quiet -t 1 --no-check-certificate -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         download = 'wget --quiet -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          download = 'wget -nc --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          address command download
          bs = close(ReqF)
@@ -212,7 +212,7 @@ if (MyReturnCode = 0) then
 
        if extension == ".lha" THEN DO
          SAY 'This is an lha compressed file'
-         download = 'wget --no-check-certificate -O ram:pouetdownload.lha 'proxyaddress'/'pickstripped
+         download = 'wget -O ram:pouetdownload.lha 'proxyaddress'/'pickstripped
          address command download
          unlha = 'lha x ram:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
          address command unlha
@@ -224,7 +224,7 @@ if (MyReturnCode = 0) then
        
        if extension == ".DMS" THEN DO
          SAY 'This is a dms compressed file'
-         download = 'wget --no-check-certificate -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         download = 'wget -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
          address command download
          undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
          address command undms
@@ -261,9 +261,13 @@ if (MyReturnCode = 0) then
 
        IF defaultaction==1 THEN DO
          SAY "Downloading default file, probably executable"
-         download = 'wget -nc --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         download = 'wget --quiet -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          SAY download
          address command download
+
+	 setexecutable = 'protect "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/#?" ' '+e'
+	 SAY setexecutable
+	 address command setexecutable
          bs = close(ReqF)
        END
 
