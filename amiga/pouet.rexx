@@ -156,12 +156,14 @@ if (MyReturnCode = 0) then
    relplatformstripped = substr(relplatform,2,length(relplatform)-8)
    SAY "Rel platform is:" relplatformstripped
    bs = close(ReqF)
+
+   downloadable = 'yes'
    
    IF FIND(relplatformstripped,'Amiga') 
    THEN SAY 'This is an Amiga production.. downloading'
    ELSE DO
-    SAY 'Not an Amiga production... exit'
-    EXIT
+    SAY 'Not an Amiga production... skip'
+    downloadable = 'no'
    END   
 
 
@@ -171,7 +173,8 @@ if (MyReturnCode = 0) then
 
    strip1 = 'grep -o -e href=.*> ram:pouetline.txt > ram:pouetline2.txt '
    address command strip1
-
+   
+   if downloadable == 'yes' then do
    
 
    if exists('ram:pouetline2.txt') then
@@ -272,7 +275,7 @@ if (MyReturnCode = 0) then
        END
 
 
-
+   end
    end
   end
   else
