@@ -15,7 +15,7 @@ http.createServer(function (req, resp)
   console.log("Download path:"+downloadpath);
   console.log("Download host:"+downloadhost);
   console.log("Download params:"+downloadparams);
-  if (downloadparams!="") downloadpath=downloadpath+"?"+downloadparams;
+  if (downloadparams!=null && downloadparams!="") downloadpath=downloadpath+"?"+downloadparams;
   console.log("Download path with query params:"+downloadpath);
   if (downloadurl.startsWith("http://"))
   {
