@@ -90,3 +90,43 @@ c9dbaebfab063efe25b74d2ae6b70bd3a0a321dc74207b5318cc17f36ec1cbfd
 
 
 ```
+
+### Amiga side
+Installation on the amiga is a little bit longer but it's a one time process, let's go through all necessary
+- copy the file pouet.rexx in this repository under directory "amiga" into rexx: of your real Amiga.
+- Download http://aminet.net/util/sys/mkdir13.lha into your amiga, uncompress it and copy file mkdir to c:, this is necessary since I cant rely on mkdir command from amigaos since the syntax changes from os to os.
+- Open s:startup-sequence and add the following string
+ ```
+ Assign >NIL: POUET: RAM:
+ ```
+ This is the root directory where the downloader will store data from pouet, of course change RAM: with the path you want to use.
+ Also add the following line to the startup.sequence
+ ```
+ SetEnv pouetproxy x.x.x.x:9999
+ ```
+Where x.x.x.x is the ipv4 adress of your PC running the proxy and 9999 is the port.
+
+- Make sure wget and grep are installed and in path, this tools are preinstalled if you are using CoffinOS or Caffeine but they dont come out of the box if you are using old Workbenches like OS3.1.
+The wget utility is usually included with the plipbox network boot disk, I think roandshow also provides his own version.
+If you dont have them, aminet is a good place where to find it but keep in mind to use a version compatible with your processor (old stock 68000 or 68020+).
+
+- Also install lha and unzip to allow pouetdownloader to decompress lha and zipfile once they are downloaded.
+
+### Usage
+Open your CLI (or SHELL) and type:
+```
+rx pouet <id> [id2]
+```
+Id is mandatory and it is the id you find in the pouet url of your release, for example, if you want to download this release:
+```
+https://www.pouet.net/prod.php?which=93426
+```
+
+you have to type
+
+```
+rx pouet 93426
+```
+
+If you add another id, pouet downloader will try to download all releases from id1 until id2.
+Non Amiga related releases will be discarded.
