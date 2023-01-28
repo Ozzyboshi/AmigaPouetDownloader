@@ -31,5 +31,62 @@ This works fine but you requires a modern machine with nodejs, so... not neat so
 
 You can find in this repository the docker stuff to get the nodejs up and running and the Amiga arexx script.
 
+## Requirements
+- A x86/x64 PC connected to the internet with Docker+Docker composer installed (tested with Ubuntu)
+- A classic amiga with 1 meg of ram, hard drive and a connection to the internet + tcp/ip stack.
+
+The PC and the Amiga must be able to talk at IP level, in particular the Amiga must be able to reach the PC at the port specified inside the docker-compose.yml (default is port 9999).
+WARNING!!!! If possible dont use a public in cloud machine, it would be better to secure the PC in a private network since there are no security mechanism to prevent unauthorized download access.
+
+These are my setups where this script has been succesfully tested:
+- A500 plus + Indivision ACA500Plus - wb3.1 - 1MB of Chip - Plipbox + Roadshow
+- A600 with Vampire V2 + CoffinOS + PCMCIA network card + Roadshow
+- A600 with Pistorm 600 + CaffeineOS + Plipbox + MiamiDX
+
 ## Installation
-TBD
+### PC side
+```
+$ git clone https://github.com/Ozzyboshi/AmigaPouetDownloader
+Cloning into 'AmigaPouetDownloader'...
+remote: Enumerating objects: 29, done.
+remote: Counting objects: 100% (29/29), done.
+remote: Compressing objects: 100% (19/19), done.
+remote: Total 29 (delta 9), reused 24 (delta 6), pack-reused 0
+Unpacking objects: 100% (29/29), done.
+Checking connectivity... fatto.
+
+$ cd AmigaPouetDownloader/
+$ docker-compose build
+Building proxy
+Step 1/7 : FROM node:16
+ ---> bfb7b2a05614
+Step 2/7 : WORKDIR /usr/src/app
+ ---> Using cache
+ ---> 2f556a748124
+Step 3/7 : COPY package*.json ./
+ ---> c8f3405eb1dd
+Step 4/7 : RUN npm install
+ ---> Running in 0dca63830f8e
+Removing intermediate container 0dca63830f8e
+ ---> 106e5ded99df
+Step 5/7 : COPY . .
+ ---> 11d5dd62b034
+Step 6/7 : EXPOSE 9999
+ ---> Running in bb1b68c3031a
+Removing intermediate container bb1b68c3031a
+ ---> ab65dcab4924
+Step 7/7 : CMD [ "node", "server.js" ]
+ ---> Running in 09c0d6421c6d
+Removing intermediate container 09c0d6421c6d
+ ---> 81764a4e092b
+
+Successfully built 81764a4e092b
+Successfully tagged ozzyboshi/pouetdownloader:latest
+
+$ docker-compose up -d
+OR
+$ docker run -d -p 9999 ozzyboshi/pouetdownloader
+c9dbaebfab063efe25b74d2ae6b70bd3a0a321dc74207b5318cc17f36ec1cbfd
+
+
+```
