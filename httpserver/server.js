@@ -41,6 +41,7 @@ http.createServer(function (req, resp)
         console.log("Redirect found");
         downloadurl = resp2.headers['location'];
         downloadpath=url.parse(downloadurl).pathname;
+        if (url.parse(downloadurl).query!=null) downloadpath=downloadpath+"?"+url.parse(downloadurl).query;
         downloadhost=url.parse(downloadurl).host;
         h.host=downloadhost;    
         console.log("New Request url:"+downloadurl);
