@@ -195,9 +195,9 @@ if (MyReturnCode = 0) then
 
 
        extension = substr(pickstripped,length(pickstripped)-3)
-       SAY "Detected extension is " extension
+       SAY "Detected extension is ###"extension"###"
        
-       makedirectory = 'MAKEDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" ALL'
+       makedirectory = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
        SAY 'Creating directory:' makedirectory
        address command makedirectory
 
@@ -206,7 +206,7 @@ if (MyReturnCode = 0) then
          gotourl save pickstripped
          SAY "Downloading an ADF file"
          download = 'wget --quiet -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
-         download = 'wget -nc --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          address command download
          bs = close(ReqF)
          defaultaction=0
@@ -224,17 +224,27 @@ if (MyReturnCode = 0) then
          defaultaction=0
 
        END
-       
-       if extension == ".DMS" THEN DO
+
+       if extension == '.dms' THEN DO
          SAY 'This is a dms compressed file'
-         download = 'wget -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
          address command download
          undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
          address command undms
          say undms
          bs = close(ReqF)
          defaultaction=0
+       END
 
+       if extension == '.DMS' THEN DO
+         SAY 'This is a dms compressed file'
+         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         address command download
+         undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
+         address command undms
+         say undms
+         bs = close(ReqF)
+         defaultaction=0
        END
 
 
