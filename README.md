@@ -110,7 +110,12 @@ Where x.x.x.x is the ipv4 adress of your PC running the proxy and 9999 is the po
 The wget utility is usually included with the plipbox network boot disk, I think roandshow also provides his own version.
 If you dont have them, aminet is a good place where to find it but keep in mind to use a version compatible with your processor (old stock 68000 or 68020+).
 
-- Also install lha and unzip to allow pouetdownloader to decompress lha and zipfile once they are downloaded.
+Also install :
+ - lha (https://aminet.net/package/util/arc/lha)
+ - unzip (http://aminet.net/package/util/arc/UnZip)
+ - xdm (http://aminet.net/package/util/arc/xDMS)
+
+to allow pouetdownloader to decompress lha, zipfile and dms files once they are downloaded.
 
 ### Usage
 Open your CLI (or SHELL) and type:
