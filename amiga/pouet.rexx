@@ -58,6 +58,11 @@ if (MyReturnCode = 0) then
    reldatestr = readln(ReqF)
    reldatestr = readln(ReqF)
    bs = close(ReqF)
+   IF LENGTH(reldatestr) == 0 THEN DO
+   	SAY 'no production'
+	ITERATE
+   END
+  
    reldatestr = substr(reldatestr,7,length(reldatestr)-11)
    SAY 'Release date is 'reldatestr
    
