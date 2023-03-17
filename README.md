@@ -106,14 +106,16 @@ Installation on the amiga is a little bit longer but it's a one time process, le
  ```
 Where x.x.x.x is the ipv4 adress of your PC running the proxy and 9999 is the port.
 
-- Make sure wget and grep are installed and in path, this tools are preinstalled if you are using CoffinOS or Caffeine but they dont come out of the box if you are using old Workbenches like OS3.1.
-The wget utility is usually included with the plipbox network boot disk, I think roandshow also provides his own version.
+Make sure *wget* and *grep* are installed and in path, this tools are preinstalled if you are using CoffinOS or Caffeine but they dont come out of the box if you are using old Workbenches like OS3.1. 
+
+The *wget* utility is usually included with the plipbox network boot disk, I think Roadshow also provides his own version. 
+
 If you dont have them, aminet is a good place where to find it but keep in mind to use a version compatible with your processor (old stock 68000 or 68020+).
 
 Also install :
  - lha (https://aminet.net/package/util/arc/lha)
  - unzip (http://aminet.net/package/util/arc/UnZip)
- - xdm (http://aminet.net/package/util/arc/xDMS)
+ - xdms (http://aminet.net/package/util/arc/xDMS)
 
 to allow pouetdownloader to decompress lha, zipfile and dms files once they are downloaded.
 
