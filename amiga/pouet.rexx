@@ -211,7 +211,7 @@ if (MyReturnCode = 0) then
          gotourl save pickstripped
          SAY "Downloading an ADF file"
          download = 'wget --quiet -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
-         download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         download = 'wget --quiet -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          address command download
          bs = close(ReqF)
          defaultaction=0
@@ -232,7 +232,7 @@ if (MyReturnCode = 0) then
 
        if extension == '.dms' THEN DO
          SAY 'This is a dms compressed file'
-         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         download = 'wget -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
          address command download
          undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
          address command undms
@@ -243,7 +243,7 @@ if (MyReturnCode = 0) then
 
        if extension == '.DMS' THEN DO
          SAY 'This is a dms compressed file'
-         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         download = 'wget -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
          address command download
          undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
          address command undms

@@ -5,6 +5,8 @@ var url = require('url');
 http.createServer(function (req, resp) 
 {
   var h = req.headers;
+  h['user-agent'] = "Mozilla/6.0"
+  
   //h.host = "2go.ch/dist/spreadpoint-talking_heads.zip";
   //h.host = "2go.ch";
   downloadurl=req.url.substring(1);
