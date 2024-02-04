@@ -122,9 +122,10 @@ to allow pouetdownloader to decompress lha, zipfile and dms files once they are 
 ### Usage
 Open your CLI (or SHELL) and type:
 ```
-rx pouet <id> [id2]
+rx pouet [<id>] [id2]
 ```
-Id is mandatory and it is the id you find in the pouet url of your release, for example, if you want to download this release:
+If you dont provide any argument, the script will try to detect the last downloaded release and it will resume from there. This feature in order to work needs the file pouet:pouetlastid.txt previously created with the last pouet id inside.
+Id is the id you find in the pouet url of your release, for example, if you want to download this release:
 ```
 https://www.pouet.net/prod.php?which=93426
 ```
