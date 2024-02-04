@@ -30,6 +30,42 @@ END
 
 SAY 'Using proxy address 'proxyaddress
 
+
+if arg() == 0 then do
+	if exists('pouet:pouetlastid.txt') ==0 THEN DO
+  		say 'cant find pouet:pouetlastid.txt'
+		exit
+	END
+
+	open(ReqF,'pouet:pouetlastid.txt','r')
+	pouetid = readln(ReqF)
+	close(ReqF)
+
+	say 'start downloading from 'pouetid
+	
+	cline = 'c:wget --quiet -O ram:pouettmp.html 'proxyaddress'/https://www.pouet.net/prodlist.php?order=added'
+	address command cline
+	MyReturnCode = RC
+	if (MyReturnCode = 0) then
+  	do
+  		reldate = 'grep -o -E "prod.php\??which=[0-9]+" ram:pouettmp.html > ram:pouetlastid.txt'
+   		address command reldate
+   		open(ReqF,'ram:pouetlastid.txt','r')
+   		reldatestr = readln(ReqF)
+   		pouetidend = substr(reldatestr,16,length(reldatestr)-15)
+   		say 'go up to ' pouetidend
+   		close(ReqF)
+   		if (pouetid > pouetidend) then
+   		do
+   			say 'already up to date'
+   			exit
+   		end
+   		
+   	end
+end
+
+
+
 SAY 'Scraping pouet from id 'pouetid' to 'pouetidend
 
 DO pouetid = pouetid TO pouetidend
@@ -211,7 +247,7 @@ if (MyReturnCode = 0) then
          gotourl save pickstripped
          SAY "Downloading an ADF file"
          download = 'wget --quiet -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
-         download = 'wget --quiet -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          address command download
          bs = close(ReqF)
          defaultaction=0
@@ -232,7 +268,7 @@ if (MyReturnCode = 0) then
 
        if extension == '.dms' THEN DO
          SAY 'This is a dms compressed file'
-         download = 'wget -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
          address command download
          undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
          address command undms
@@ -243,7 +279,7 @@ if (MyReturnCode = 0) then
 
        if extension == '.DMS' THEN DO
          SAY 'This is a dms compressed file'
-         download = 'wget -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
          address command download
          undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
          address command undms
@@ -288,10 +324,14 @@ if (MyReturnCode = 0) then
 	 address command setexecutable
          bs = close(ReqF)
        END
+       
+    END
+    END
+    open(ReqF,'pouet:pouetlastid.txt','w')
+    say 'updating lastpouetid with 'pouetid+1
+    writeln( ReqF, pouetid+1)
+    close(ReqF)
 
-
-   end
-   end
   end
   else
   do
