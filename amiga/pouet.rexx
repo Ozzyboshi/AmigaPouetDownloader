@@ -327,10 +327,16 @@ if (MyReturnCode = 0) then
        
     END
     END
-    open(ReqF,'pouet:pouetlastid.txt','w')
-    say 'updating lastpouetid with 'pouetid+1
-    writeln( ReqF, pouetid+1)
+    
+    open(ReqF,'pouet:pouetlastid.txt','r')
+    pouetidold = readln(ReqF)
     close(ReqF)
+    if pouetidold < pouetid +1 THEN DO
+    	open(ReqF,'pouet:pouetlastid.txt','w')
+    	say 'updating lastpouetid with 'pouetid+1
+    	writeln( ReqF, pouetid+1)
+    	close(ReqF)
+    END
 
   end
   else
