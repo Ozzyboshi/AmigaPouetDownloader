@@ -6,7 +6,7 @@ AmigaPouetDownloader it's a little arexx script that allows you to download and 
 
 The main goal is to feed the arexx script with a pouet id entry (or a range) and it will go through one by one, detect if it's an Amiga release and if yes download it on your local Amiga file system. 
 
-After downloading, the script will also check what type of content it is (is it a zipfile? a lha archive? an adf?) and will try to uncompress in a specific folder under pouet: assignment. 
+After downloading, the script will also check what type of content it is (is it a zipfile? a lha archive? an adf?) and will try to uncompress in a specific folder under __pouet:__ assignment. 
 
 For example, let's assume the arexx script finds a demo called "release.lha" which has been released at partyxxx of 2023, in this case the directory
 _pouet:party/partyxxx/2023/demos/release_ 
@@ -36,7 +36,8 @@ You can find in this repository the docker stuff to get the nodejs up and runnin
 - A classic amiga with 1 meg of ram, hard drive and a connection to the internet + tcp/ip stack.
 
 The PC and the Amiga must be able to talk at IP level, in particular the Amiga must be able to reach the PC at the port specified inside the docker-compose.yml (default is port 9999).
-WARNING!!!! If possible dont use a public in cloud machine, it would be better to secure the PC in a private network since there are no security mechanism to prevent unauthorized download access.
+
+WARNING!!!! If possible don't use a public in cloud machine, it would be better to secure the PC in a private network since there are no security mechanism to prevent unauthorized download access.
 
 These are my setups where this script has been succesfully tested:
 - A500 plus + Indivision ACA500Plus - wb3.1 - 1MB of Chip - Plipbox + Roadshow
