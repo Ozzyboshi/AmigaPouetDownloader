@@ -25,9 +25,32 @@ http.createServer(function (req, resp)
     h.host=downloadhost;
     var req2 = http.request({ host: h.host, port: 80, path: downloadpath, method: req.method, headers: h }, function (resp2) 
     {
-      resp.writeHead(resp2.statusCode, resp2.headers);
-      resp2.on('data', function (d) { resp.write(d); });
-      resp2.on('end', function () { resp.end(); });
+      if (resp2.statusCode == "302" || resp2.statusCode == "301" || resp2.statusCode == "308" )
+      {
+        console.log("Redirect found");
+        downloadurl = resp2.headers['location'];
+        downloadpath=url.parse(downloadurl).pathname;
+        if (url.parse(downloadurl).query!=null) downloadpath=downloadpath+"?"+url.parse(downloadurl).query;
+        downloadhost=url.parse(downloadurl).host;
+        h.host=downloadhost;
+        console.log("New Request url:"+downloadurl);
+        console.log("New Download path:"+downloadpath);
+        resp.writeHead(resp2.statusCode, resp2.headers);
+        var req3 = https.request({ host: h.host, port: 443, path: downloadpath, method: req.method, headers: h }, function (resp3) 
+        {
+          resp.writeHead(resp3.statusCode, resp3.headers);
+          resp3.on('data', function (d) { resp.write(d); });
+          resp3.on('end', function () { resp.end(); });
+        });
+        resp2.on('data', function (d) { req3.write(d); });
+        resp2.on('end', function () { req3.end(); });
+      }
+      else
+      {
+        resp.writeHead(resp2.statusCode, resp2.headers);
+        resp2.on('data', function (d) { resp.write(d); });
+        resp2.on('end', function () { resp.end(); });
+      }
     });
     req.on('data', function (d) { req2.write(d); });
     req.on('end', function () { req2.end(); });
@@ -38,14 +61,14 @@ http.createServer(function (req, resp)
     h.host=downloadhost;
     var req2 = https.request({ host: h.host, port: 443, path: downloadpath, method: req.method, headers: h }, function (resp2) 
     {
-      if (resp2.statusCode == "302" || resp2.statusCode == "301" )
+      if (resp2.statusCode == "302" || resp2.statusCode == "301" || resp2.statusCode == "308" )
       {
         console.log("Redirect found");
         downloadurl = resp2.headers['location'];
         downloadpath=url.parse(downloadurl).pathname;
         if (url.parse(downloadurl).query!=null) downloadpath=downloadpath+"?"+url.parse(downloadurl).query;
         downloadhost=url.parse(downloadurl).host;
-        h.host=downloadhost;    
+        h.host=downloadhost;
         console.log("New Request url:"+downloadurl);
         console.log("New Download path:"+downloadpath);
         resp.writeHead(resp2.statusCode, resp2.headers);
