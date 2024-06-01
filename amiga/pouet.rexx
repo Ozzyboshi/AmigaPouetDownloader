@@ -154,7 +154,10 @@ if (MyReturnCode = 0) then
    ELSE DO
      open(ReqF,'ram:pouetyear.txt','r')
      partyyear = readln(ReqF)
-     partyyearstripped = substr(partyyear,6,length(partyyear)-10)
+     partyyearstripped ='NA'
+     if Length(partyyear) > 9 THEN DO 
+     	partyyearstripped = substr(partyyear,6,length(partyyear)-10)
+     END
      SAY "Year Party is:" partyyearstripped
    END
    bs = close(ReqF)
@@ -246,11 +249,26 @@ if (MyReturnCode = 0) then
        if extension == ".adf" THEN DO
          gotourl save pickstripped
          SAY "Downloading an ADF file"
-         download = 'wget --quiet -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+         
+         download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -O "ram:adfmount.adf" 'proxyaddress'/'pickstripped
+         address command download
+         download = 'mkdir pouet:adfextract'
+         address command download
+         download = 'unadf ram:adfmount.adf -d pouet:adfextract'
+         address command download
+         unadfout = RC
+         say unadfout
+         download = 'copy pouet:adfextract "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adfextract"' 
+         address command download
+         
          download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          address command download
          bs = close(ReqF)
          defaultaction=0
+         unadf = 'unadf  "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/'pickstripped'" -d ram:'
+         #address command unadf
+         say unadf
+
 
        END
 
