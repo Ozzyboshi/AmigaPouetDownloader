@@ -252,23 +252,42 @@ if (MyReturnCode = 0) then
          
          download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -O "ram:adfmount.adf" 'proxyaddress'/'pickstripped
          address command download
-         download = 'mkdir pouet:adfextract'
+         
+         download = 'mkdir pouet:adfextract'pouetid
          address command download
-         download = 'unadf ram:adfmount.adf -d pouet:adfextract'
+         
+         download = 'unadf ram:adfmount.adf -d pouet:adfextract'pouetid
          address command download
          unadfout = RC
          say unadfout
-         download = 'copy pouet:adfextract "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adfextract"' 
+         
+         download = 'mkdir -p "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf" ALL' 
+         say download
+         address command download
+         
+         download = 'copy pouet:adfextract'pouetid' "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf" ALL' 
+         say download
          address command download
          
          download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
          address command download
          bs = close(ReqF)
          defaultaction=0
-         unadf = 'unadf  "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/'pickstripped'" -d ram:'
+         #unadf = 'unadf  "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/'pickstripped'" -d ram:'
          #address command unadf
-         say unadf
+         #say unadf
+         
+         download = 'delete pouet:adfextract'pouetid' all'
+         address command download
+         
+         download = 'delete pouet:adfextract'pouetid'.info all'
+         address command download
+         
+         download = 'delete pouet:adfextract'pouetid' all'
+         address command download
 
+
+         
 
        END
 
