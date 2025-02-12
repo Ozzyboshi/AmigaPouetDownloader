@@ -18,7 +18,9 @@ http.createServer(function (req, resp)
   console.log("Download host:"+downloadhost);
   console.log("Download params:"+downloadparams);
   if (downloadparams!=null && downloadparams!="") downloadpath=downloadpath+"?"+downloadparams;
-  console.log("Download path with query params:"+downloadpath);
+  downloadpath = downloadpath.replace(/&amp;/g, "&"); // Corregge l'errore
+
+  console.log("Download path with query params after encoding:"+downloadpath);
   if (downloadurl.startsWith("http://"))
   {
     console.log("Downloading from non https server");

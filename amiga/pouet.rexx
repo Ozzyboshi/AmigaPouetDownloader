@@ -234,6 +234,7 @@ if (MyReturnCode = 0) then
        SAY 'Scene is 'sceneorg
        SAY 'Scene 2 is 'sceneorg2
        pickstripped  = 'https://files.scene.org/get/'sceneorg2
+       SAY 'pickstripped is 'pickstripped
        END
 
 
@@ -293,7 +294,8 @@ if (MyReturnCode = 0) then
 
        if extension == ".lha" THEN DO
          SAY 'This is an lha compressed file'
-         download = 'wget -O ram:pouetdownload.lha 'proxyaddress'/'pickstripped
+         download = 'wget -q -O ram:pouetdownload.lha "'proxyaddress'/'pickstripped'"'
+         SAY "Download is ###"download"###"
          address command download
          unlha = 'lha x ram:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
          address command unlha
