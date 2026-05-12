@@ -80,7 +80,7 @@ DESTDIR='pouet:'
 /*SAY "enter pouet id"
 PULL pouetid*/
 
-cline = 'c:wget --quiet -O ram:pouettmp.html 'proxyaddress'/https://www.pouet.net/prod.php?which='pouetid
+cline = 'c:wget --quiet -O ram:pouettmp.json 'proxyaddress'/https://api.pouet.net/v1/prod/?id='pouetid
 
 address command cline
 MyReturnCode = RC
@@ -88,118 +88,80 @@ if (MyReturnCode = 0) then
   do
    SAY 'Download Pouet page seems OK'
    
-   reldate = 'grep -A1 -E "<td>release date :</td>" ram:pouettmp.html > ram:pouetreldate.txt'
+   reldate = 'c:parse_prod ram:pouettmp.json 5 > ram:pouetreldate.txt'
    address command reldate
    open(ReqF,'ram:pouetreldate.txt','r')
    reldatestr = readln(ReqF)
-   reldatestr = readln(ReqF)
    bs = close(ReqF)
    IF LENGTH(reldatestr) == 0 THEN DO
-   	SAY 'no production'
-	ITERATE
+   	SAY 'no production date'
+	  ITERATE
    END
-  
-   reldatestr = substr(reldatestr,7,length(reldatestr)-11)
    SAY 'Release date is 'reldatestr
    
-   title = 'grep -o -E "<span id=.prod-title.>(.*)</span>" ram:pouettmp.html > ram:pouettitle.txt'
-   address command title
-   
-   title = 'grep -o -E ">.+</span> by" ram:pouettitle.txt > ram:pouettitle2.txt'
-   address command title
-   
-   open(ReqF,'ram:pouettitle2.txt','r')
-   title = readln(ReqF)
-   IF LENGTH(title) == 0 THEN DO
-     bs = close(ReqF)
-     open(ReqF,'ram:pouettitle.txt','r')
-     title = readln(ReqF)
-     titlestripped = substr(title,23,length(title)-36)
+   titlestripped = 'c:parse_prod ram:pouettmp.json 2 > ram:pouetrtitle.txt'
+   address command titlestripped
+   open(ReqF,'ram:pouetrtitle.txt','r')
+   titlestripped = readln(ReqF)
+   bs = close(ReqF)
+   IF LENGTH(titlestripped) == 0 THEN DO
+   	SAY 'no production title'
+	ITERATE
    END
-   ELSE
-    titlestripped = substr(title,2,length(title)-11)
    SAY "Title is:" titlestripped
-   bs = close(ReqF)
 
-   party = 'grep -E "party.php" ram:pouettmp.html > ram:pouetparty.txt'
-   address command party
-
-   partyname = 'grep -E -o ">(.*)</a>" ram:pouetparty.txt > ram:pouetname.txt'
+   partyname = 'c:parse_prod ram:pouettmp.json 24 > ram:pouetparty.txt'
    address command partyname
-   
-   partyname = 'grep -E -o "<(.*)</a>" ram:pouetname.txt > ram:pouetname2.txt'
-   address command partyname
-   
-   partyname = 'grep -E -o ">(.*)</a>" ram:pouetname2.txt > ram:pouetname3.txt'
-   address command partyname
-   
-   partystripped = 'no party'
-   open(ReqF,'ram:pouetname3.txt','r')
+   open(ReqF,'ram:pouetparty.txt','r')
    partyname = readln(ReqF)
-   if LENGTH(partyname) == 0 
-     THEN SAY 'No party detected, putting in no party category'
-   ELSE DO
-     partystripped = substr(partyname,2,length(partyname)-5)
-     SAY "Party is:" partystripped
-     partyname = 'grep -E -o "</a>(.*)" ram:pouetparty.txt > ram:pouetyear.txt'
-     address command partyname
-   END
+   partyyearstripped = readln(ReqF)
+   partyyearstripped = readln(ReqF)
+   partyyearstripped = readln(ReqF)
    bs = close(ReqF)
-   
-   partyyearstripped='no year'
-   if LENGTH(partyname) == 0 THEN DO
-     SAY 'No party year detected, using release date 'reldatestr
-     partyyearstripped = reldatestr
+   IF LENGTH(partyname) == 0 THEN DO
+    partyname = 'no party'
+   	SAY 'No party detected, putting in no party category'
    END
-   ELSE DO
-     open(ReqF,'ram:pouetyear.txt','r')
-     partyyear = readln(ReqF)
-     partyyearstripped ='NA'
-     if Length(partyyear) > 9 THEN DO 
-     	partyyearstripped = substr(partyyear,6,length(partyyear)-10)
-     END
-     SAY "Year Party is:" partyyearstripped
+   IF LENGTH(partyyearstripped) == 0 THEN DO
+    partyyearstripped = 'no year'
+   	SAY 'No party year detected, putting in no year party category'
    END
+   partystripped = partyname
+   SAY "Party name is:" partystripped
+   SAY "Year Party is:" partyyearstripped
+
+   reltypestripped = 'c:parse_prod ram:pouettmp.json 3 > ram:pouetreltype.txt'
+   address command reltypestripped
+   open(ReqF,'ram:pouetreltype.txt','r')
+   reltypestripped = readln(ReqF)
    bs = close(ReqF)
-   
-   reltype = 'grep -o -E "prodlist.php.type(.*)" ram:pouettmp.html > ram:pouettype.txt'
-   address command reltype
-   
-   reltype = 'grep -o -E "><(.*)" ram:pouettype.txt > ram:pouettype2.txt'
-   address command reltype
-   
-   reltype = 'grep -o -E "<(.*)" ram:pouettype2.txt > ram:pouettype3.txt'
-   address command reltype
-   
-   reltype = 'grep -o -E ">(.*)</span>" ram:pouettype3.txt > ram:pouettype4.txt'
-   address command reltype
-   
-   open(ReqF,'ram:pouettype4.txt','r')
-   reltype = readln(ReqF)
-   reltypestripped = substr(reltype,2,length(reltype)-8)
+   IF LENGTH(reltypestripped) == 0 THEN DO
+   	SAY 'no production release type'
+	  ITERATE
+   END
    SAY "Rel type is:" reltypestripped
+
+   relplatformstripped = 'c:parse_prod ram:pouettmp.json 20 > ram:pouetrelplatform.txt'
+   address command relplatformstripped
+   open(ReqF,'ram:pouetrelplatform.txt','r')
+   relplatformstripped = readln(ReqF)
    bs = close(ReqF)
-   
-   
-   
-   
-   relplatform = 'grep -E -o "prodlist.php.platform(.*)" ram:pouettmp.html > ram:pouetplatform.txt'
-   address command relplatform
-   
-   relplatform = 'grep -o -E "><(.*)" ram:pouetplatform.txt > ram:pouetplatform2.txt'
-   address command relplatform
-   
-   relplatform = 'grep -o -E "<(.*)" ram:pouetplatform2.txt > ram:pouetplatform3.txt'
-   address command relplatform
-   
-   relplatform = 'grep -o -E ">(.*)</span>" ram:pouetplatform3.txt > ram:pouetplatform4.txt'
-   address command relplatform
-   
-   open(ReqF,'ram:pouetplatform4.txt','r')
-   relplatform = readln(ReqF)
-   relplatformstripped = substr(relplatform,2,length(relplatform)-8)
+   IF LENGTH(relplatformstripped) == 0 THEN DO
+   	SAY 'no production release platform'
+	  ITERATE
+   END
    SAY "Rel platform is:" relplatformstripped
+
+   pickstripped = 'c:parse_prod ram:pouettmp.json 10 > ram:pouetdownloadlink.txt'
+   address command pickstripped
+   open(ReqF,'ram:pouetdownloadlink.txt','r')
+   pickstripped = readln(ReqF)
    bs = close(ReqF)
+   IF LENGTH(pickstripped) == 0 THEN DO
+   	SAY 'no production download link'
+	  ITERATE
+   END
+   SAY "DOWNLOAD URL IS:" pickstripped
 
    downloadable = 'yes'
    
@@ -209,35 +171,21 @@ if (MyReturnCode = 0) then
     SAY 'Not an Amiga production... skip'
     downloadable = 'no'
    END   
-
-
-   
-   downloadrow = 'grep -E mainDownloadLink ram:pouettmp.html > ram:pouetline.txt'
-   address command downloadrow
-
-   strip1 = 'grep -o -e href=.*> ram:pouetline.txt > ram:pouetline2.txt '
-   address command strip1
    
    if downloadable == 'yes' then do
    
 
-   if exists('ram:pouetline2.txt') then
-     if open(ReqF,'ram:pouetline2.txt','r') then do
-       pick = readln(ReqF)
-       pickstripped = substr(pick,7,length(pick)-26)
+   if 1 then
+     if 1 then do
 
-       SAY "DOWNLOAD URL IS:" pickstripped
-       
-       sceneorg = substr(pickstripped,1,29)
-       if sceneorg == 'https://files.scene.org/view/' THEN DO
-       sceneorg2 = substr(pickstripped,29)
-       SAY 'Scene is 'sceneorg
-       SAY 'Scene 2 is 'sceneorg2
-       pickstripped  = 'https://files.scene.org/get/'sceneorg2
-       SAY 'pickstripped is 'pickstripped
-       END
-
-
+      sceneorg = substr(pickstripped,1,29)
+      if sceneorg == 'https://files.scene.org/view/' THEN DO
+        sceneorg2 = substr(pickstripped,29)
+        SAY 'Scene is 'sceneorg
+        SAY 'Scene 2 is 'sceneorg2
+        pickstripped  = 'https://files.scene.org/get/'sceneorg2
+        SAY 'pickstripped is 'pickstripped
+      END
 
        extension = substr(pickstripped,length(pickstripped)-3)
        SAY "Detected extension is ###"extension"###"
@@ -332,7 +280,8 @@ if (MyReturnCode = 0) then
        if extension == ".zip" THEN DO
 
          SAY "This is a zipped file, unzipping..."
-         download = 'wget --quiet -O ram:pouetdownload.zip 'proxyaddress'/'pickstripped
+         download = 'c:wget --quiet -O ram:pouetdownload.zip 'proxyaddress'/'pickstripped
+         SAY download
          address command download
          /*if RC = 0 THEN
            SAY 'Download succeded'

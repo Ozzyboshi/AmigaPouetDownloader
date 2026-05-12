@@ -118,8 +118,7 @@ Also install :
  - unzip (http://aminet.net/package/util/arc/UnZip)
  - xdms (http://aminet.net/package/util/arc/xDMS)
  - unadf (see amiga/c directory on this repo, it must be copied into c: or in path)
-
-to allow pouetdownloader to decompress lha, zipfile and dms files once they are downloaded.
+ - parse_prod (see amiga/c directory on this repo, it must be copied into c: or in path)
 
 ### Usage
 Open your CLI (or SHELL) and type:
