@@ -30,6 +30,37 @@ END
 
 SAY 'Using proxy address 'proxyaddress
 
+IF pouetid = "party" THEN DO
+  PARSE ARG pouetid pouetidend partyyearinput
+  partyyearinput=STRIP(partyyearinput)
+  cline = 'c:wget --quiet -O ram:pouetpartytmp.json 'proxyaddress'/https://api.pouet.net/v1/party/?id='pouetidend'&year='partyyearinput
+
+  address command cline
+  MyReturnCode = RC
+  if (MyReturnCode = 0) then
+  do
+    SAY 'Download Pouet party page seems OK'
+    scanids = 'c:pouet_party ram:pouetpartytmp.json --onlyid > ram:pouetpartyids.txt'
+   	address command scanids
+    IF OPEN('ReqF', 'ram:pouetpartyids.txt', 'R') THEN DO
+    DO WHILE ~EOF('ReqF')
+        linea = READLN('ReqF')
+        pouetcommand = 'rx pouet 'linea
+        say pouetcommand
+        address command pouetcommand
+    END
+    CALL CLOSE 'ReqF'
+END
+ELSE DO
+
+    SAY "Impossibile aprire il file"
+
+END
+
+  end
+  EXIT
+END
+
 
 if arg() == 0 then do
 	if exists('pouet:pouetlastid.txt') ==0 THEN DO

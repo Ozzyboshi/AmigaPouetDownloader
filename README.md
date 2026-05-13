@@ -123,7 +123,7 @@ Also install :
 ### Usage
 Open your CLI (or SHELL) and type:
 ```
-rx pouet [<id>] [id2]
+rx pouet [<id|party>] [id2] [partyyear]
 ```
 If you dont provide any argument, the script will try to detect the last downloaded release and it will resume from there. This feature in order to work needs the file pouet:pouetlastid.txt previously created with the last pouet id inside.
 Id is the id you find in the pouet url of your release, for example, if you want to download this release:
@@ -139,3 +139,8 @@ rx pouet 93426
 
 If you add another id, pouet downloader will try to download all releases from id1 until id2.
 Non Amiga related releases will be discarded.
+
+if you want to download everything related to a specific party, for example, revision 2016:
+```
+rx pouet party 1550 2026
+```
