@@ -117,8 +117,9 @@ Also install :
  - lha (https://aminet.net/package/util/arc/lha)
  - unzip (http://aminet.net/package/util/arc/UnZip)
  - xdms (http://aminet.net/package/util/arc/xDMS)
- - unadf (see amiga/c directory on this repo, it must be copied into c: or in path)
+ - adf_extract (see amiga/c directory on this repo, it must be copied into c: or in path)
  - parse_prod (see amiga/c directory on this repo, it must be copied into c: or in path)
+ - pouet_party (see amiga/c directory on this repo, it must be copied into c: or in path)
 
 ### Usage
 Open your CLI (or SHELL) and type:

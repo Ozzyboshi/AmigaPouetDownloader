@@ -149,9 +149,15 @@ if (MyReturnCode = 0) then
    partyyearstripped = readln(ReqF)
    partyyearstripped = readln(ReqF)
    bs = close(ReqF)
-   IF LENGTH(partyname) == 0 THEN DO
+   IF LENGTH(partyname) == 0 | partyname == '(no placing)' THEN DO
     partyname = 'no party'
    	SAY 'No party detected, putting in no party category'
+    partydatecmd = 'c:parse_prod ram:pouettmp.json 5 > ram:pouetnoparty.txt'
+    address command partydatecmd
+    open(ReqF,'ram:pouetnoparty.txt','r')
+    partyyearstripped = readln(ReqF)
+    partyyearstripped = substr(partyyearstripped,1,4)
+    bs = close(ReqF)
    END
    IF LENGTH(partyyearstripped) == 0 THEN DO
     partyyearstripped = 'no year'
@@ -207,7 +213,6 @@ if (MyReturnCode = 0) then
    
 
    if 1 then
-     if 1 then do
 
       sceneorg = substr(pickstripped,1,29)
       if sceneorg == 'https://files.scene.org/view/' THEN DO
@@ -218,133 +223,104 @@ if (MyReturnCode = 0) then
         SAY 'pickstripped is 'pickstripped
       END
 
-       extension = substr(pickstripped,length(pickstripped)-3)
-       SAY "Detected extension is ###"extension"###"
+      extension = substr(pickstripped,length(pickstripped)-3)
+      SAY "Detected extension is ###"extension"###"
        
-       makedirectory = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
-       SAY 'Creating directory:' makedirectory
-       address command makedirectory
+      makedirectory = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
+      SAY 'Creating directory:' makedirectory
+      address command makedirectory
 
-       defaultaction=1
-       if extension == ".adf" THEN DO
-         gotourl save pickstripped
-         SAY "Downloading an ADF file"
-         
-         download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -O "ram:adfmount.adf" 'proxyaddress'/'pickstripped
-         address command download
-         
-         download = 'mkdir pouet:adfextract'pouetid
-         address command download
-         
-         download = 'unadf ram:adfmount.adf -d pouet:adfextract'pouetid
-         address command download
-         unadfout = RC
-         say unadfout
-         
-         download = 'mkdir -p "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf" ALL' 
-         say download
-         address command download
-         
-         download = 'copy pouet:adfextract'pouetid' "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf" ALL' 
-         say download
-         address command download
-         
-         download = 'wget --quiet --user-agent="Mozilla/5.0" -t 1 -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
-         address command download
-         bs = close(ReqF)
+      defaultaction=1
+
+      if extension == ".adf" THEN DO
          defaultaction=0
-         #unadf = 'unadf  "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/'pickstripped'" -d ram:'
-         #address command unadf
-         #say unadf
+        SAY "Downloading an ADF file"
+        download = 'c:wget --quiet --user-agent="Mozilla/5.0" -t 1 -O "ram:adfmount.adf" 'proxyaddress'/'pickstripped
+        address command download
+
+        download = 'mkdir -p "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf" ALL' 
+        say download
+        address command download
+
+        download = 'c:adf_extract ram:adfmount.adf "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf"' 
+        say download
+        address command download
+
+        download = 'copy ram:adfmount.adf to "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/'titlestripped'.adf"' 
+        say download
+        address command download
+      END
+
+      if extension == ".lha" THEN DO
+        SAY 'This is an lha compressed file'
+        download = 'wget -q -O ram:pouetdownload.lha "'proxyaddress'/'pickstripped'"'
+        SAY "Download is ###"download"###"
+        address command download
+        unlha = 'lha x ram:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
+        address command unlha
+        say unlha
+        bs = close(ReqF)
+        defaultaction=0
+      END
+
+      if extension == '.dms' THEN DO
+        SAY 'This is a dms compressed file'
+        download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+        address command download
+        undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
+        address command undms
+        say undms
+        bs = close(ReqF)
+        defaultaction=0
+      END
+
+      if extension == '.DMS' THEN DO
+        SAY 'This is a dms compressed file'
+        download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+        address command download
+        undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
+        address command undms
+        say undms
+        bs = close(ReqF)
+        defaultaction=0
+      END
+
+      if extension == ".zip" THEN DO
+
+        SAY "This is a zipped file, unzipping..."
+        download = 'c:wget --quiet -O ram:pouetdownload.zip 'proxyaddress'/'pickstripped
+        SAY download
+        address command download
+        /*if RC = 0 THEN
+          SAY 'Download succeded'
+        ELSE
+          SAY 'Download failed'
+        END
+        */
+
+
+        /*unzip = 'unzip -n ram:pouetdownload.zip -d ''"ram:parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped"'*/
+        unzip = 'unzip -n ram:pouetdownload.zip -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
+        say unzip
+        address command unzip
          
-         download = 'delete pouet:adfextract'pouetid' all'
-         address command download
-         
-         download = 'delete pouet:adfextract'pouetid'.info all'
-         address command download
-         
-         download = 'delete pouet:adfextract'pouetid' all'
-         address command download
+        bs = close(ReqF)
+        defaultaction=0
 
+      END
 
-         
+      IF defaultaction==1 THEN DO
+        SAY "Downloading default file, probably executable"
+        download = 'wget --quiet -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+        SAY download
+        address command download
 
-       END
-
-       if extension == ".lha" THEN DO
-         SAY 'This is an lha compressed file'
-         download = 'wget -q -O ram:pouetdownload.lha "'proxyaddress'/'pickstripped'"'
-         SAY "Download is ###"download"###"
-         address command download
-         unlha = 'lha x ram:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
-         address command unlha
-         say unlha
-         bs = close(ReqF)
-         defaultaction=0
-
-       END
-
-       if extension == '.dms' THEN DO
-         SAY 'This is a dms compressed file'
-         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
-         address command download
-         undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
-         address command undms
-         say undms
-         bs = close(ReqF)
-         defaultaction=0
-       END
-
-       if extension == '.DMS' THEN DO
-         SAY 'This is a dms compressed file'
-         download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
-         address command download
-         undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
-         address command undms
-         say undms
-         bs = close(ReqF)
-         defaultaction=0
-       END
-
-
-
-       if extension == ".zip" THEN DO
-
-         SAY "This is a zipped file, unzipping..."
-         download = 'c:wget --quiet -O ram:pouetdownload.zip 'proxyaddress'/'pickstripped
-         SAY download
-         address command download
-         /*if RC = 0 THEN
-           SAY 'Download succeded'
-         ELSE
-           SAY 'Download failed'
-         END
-         */
-
-
-         /*unzip = 'unzip -n ram:pouetdownload.zip -d ''"ram:parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped"'*/
-         unzip = 'unzip -n ram:pouetdownload.zip -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
-         say unzip
-         address command unzip
-         
-         bs = close(ReqF)
-         defaultaction=0
-
-       END
-
-       IF defaultaction==1 THEN DO
-         SAY "Downloading default file, probably executable"
-         download = 'wget --quiet -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
-         SAY download
-         address command download
-
-	 setexecutable = 'protect "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/#?" ' '+e'
-	 SAY setexecutable
-	 address command setexecutable
-         bs = close(ReqF)
-       END
+	      setexecutable = 'protect "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/#?" ' '+e'
+	      SAY setexecutable
+	      address command setexecutable
+        bs = close(ReqF)
+      END
        
-    END
     END
     
     open(ReqF,'pouet:pouetlastid.txt','r')
