@@ -101,7 +101,7 @@ Installation on the amiga is a little bit longer but it's a one time process, le
  Assign >NIL: POUET: RAM:
  ```
  This is the root directory where the downloader will store data from pouet, of course change RAM: with the path you want to use.
- Also add the following line to the startup.sequence
+ Also add the following line to the s:user-startup.sequence
  ```
  SetEnv pouetproxy x.x.x.x:9999
  ```
