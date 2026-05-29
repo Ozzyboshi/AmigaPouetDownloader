@@ -13,8 +13,13 @@ if exists('pouet:') == 0 THEN DO
   EXIT
 END
 
-address command 'getenv pouetproxy > ram:pouetproxy.txt'
-open(ReqF,'ram:pouetproxy.txt','r')
+if exists('pouettmp:') == 0 THEN DO
+  SAY 'Please assign pouettmp:'
+  EXIT
+END
+
+address command 'getenv pouetproxy > pouettmp:pouetproxy.txt'
+open(ReqF,'pouettmp:pouetproxy.txt','r')
 proxyaddress = readln(ReqF)
 close(ReqF)
 
@@ -33,16 +38,16 @@ SAY 'Using proxy address 'proxyaddress
 IF pouetid = "party" THEN DO
   PARSE ARG pouetid pouetidend partyyearinput
   partyyearinput=STRIP(partyyearinput)
-  cline = 'c:wget --quiet -O ram:pouetpartytmp.json 'proxyaddress'/https://api.pouet.net/v1/party/?id='pouetidend'&year='partyyearinput
+  cline = 'c:wget --quiet -O pouettmp:pouetpartytmp.json 'proxyaddress'/https://api.pouet.net/v1/party/?id='pouetidend'&year='partyyearinput
 
   address command cline
   MyReturnCode = RC
   if (MyReturnCode = 0) then
   do
     SAY 'Download Pouet party page seems OK'
-    scanids = 'c:pouet_party ram:pouetpartytmp.json --onlyid > ram:pouetpartyids.txt'
+    scanids = 'c:pouet_party pouettmp:pouetpartytmp.json --onlyid > pouettmp:pouetpartyids.txt'
    	address command scanids
-    IF OPEN('ReqF', 'ram:pouetpartyids.txt', 'R') THEN DO
+    IF OPEN('ReqF', 'pouettmp:pouetpartyids.txt', 'R') THEN DO
     DO WHILE ~EOF('ReqF')
         linea = READLN('ReqF')
         pouetcommand = 'rx pouet 'linea
@@ -74,14 +79,14 @@ if arg() == 0 then do
 
 	say 'start downloading from 'pouetid
 	
-	cline = 'c:wget --quiet -O ram:pouettmp.html 'proxyaddress'/https://www.pouet.net/prodlist.php?order=added'
+	cline = 'c:wget --quiet -O pouettmp:pouettmp.html 'proxyaddress'/https://www.pouet.net/prodlist.php?order=added'
 	address command cline
 	MyReturnCode = RC
 	if (MyReturnCode = 0) then
   	do
-  		reldate = 'grep -o -E "prod.php\??which=[0-9]+" ram:pouettmp.html > ram:pouetlastid.txt'
+  		reldate = 'grep -o -E "prod.php\??which=[0-9]+" pouettmp:pouettmp.html > pouettmp:pouetlastprods.txt'
    		address command reldate
-   		open(ReqF,'ram:pouetlastid.txt','r')
+   		open(ReqF,'pouettmp:pouetlastprods.txt','r')
    		reldatestr = readln(ReqF)
    		pouetidend = substr(reldatestr,16,length(reldatestr)-15)
    		say 'go up to ' pouetidend
@@ -101,9 +106,9 @@ SAY 'Scraping pouet from id 'pouetid' to 'pouetidend
 
 DO pouetid = pouetid TO pouetidend
 
-if exists('ram:pouettmp.html') THEN DO
+if exists('pouettmp:pouettmp.html') THEN DO
   SAY 'Delete old pouet tmp files...'
-  cmddel = 'delete ram:pouet#? QUIET'
+  cmddel = 'delete pouettmp:pouet#? QUIET'
   address command cmddel
 END
 
@@ -111,7 +116,7 @@ DESTDIR='pouet:'
 /*SAY "enter pouet id"
 PULL pouetid*/
 
-cline = 'c:wget --quiet -O ram:pouettmp.json 'proxyaddress'/https://api.pouet.net/v1/prod/?id='pouetid
+cline = 'c:wget --quiet -O pouettmp:pouettmp.json 'proxyaddress'/https://api.pouet.net/v1/prod/?id='pouetid
 
 address command cline
 MyReturnCode = RC
@@ -119,9 +124,9 @@ if (MyReturnCode = 0) then
   do
    SAY 'Download Pouet page seems OK'
    
-   reldate = 'c:parse_prod ram:pouettmp.json 5 > ram:pouetreldate.txt'
+   reldate = 'c:parse_prod pouettmp:pouettmp.json 5 > pouettmp:pouetreldate.txt'
    address command reldate
-   open(ReqF,'ram:pouetreldate.txt','r')
+   open(ReqF,'pouettmp:pouetreldate.txt','r')
    reldatestr = readln(ReqF)
    bs = close(ReqF)
    IF LENGTH(reldatestr) == 0 THEN DO
@@ -130,9 +135,9 @@ if (MyReturnCode = 0) then
    END
    SAY 'Release date is 'reldatestr
    
-   titlestripped = 'c:parse_prod ram:pouettmp.json 2 > ram:pouetrtitle.txt'
+   titlestripped = 'c:parse_prod pouettmp:pouettmp.json 2 > pouettmp:pouetrtitle.txt'
    address command titlestripped
-   open(ReqF,'ram:pouetrtitle.txt','r')
+   open(ReqF,'pouettmp:pouetrtitle.txt','r')
    titlestripped = readln(ReqF)
    bs = close(ReqF)
    IF LENGTH(titlestripped) == 0 THEN DO
@@ -141,9 +146,9 @@ if (MyReturnCode = 0) then
    END
    SAY "Title is:" titlestripped
 
-   partyname = 'c:parse_prod ram:pouettmp.json 24 > ram:pouetparty.txt'
+   partyname = 'c:parse_prod pouettmp:pouettmp.json 24 > pouettmp:pouetparty.txt'
    address command partyname
-   open(ReqF,'ram:pouetparty.txt','r')
+   open(ReqF,'pouettmp:pouetparty.txt','r')
    partyname = readln(ReqF)
    partyyearstripped = readln(ReqF)
    partyyearstripped = readln(ReqF)
@@ -152,9 +157,9 @@ if (MyReturnCode = 0) then
    IF LENGTH(partyname) == 0 | partyname == '(no placing)' THEN DO
     partyname = 'no party'
    	SAY 'No party detected, putting in no party category'
-    partydatecmd = 'c:parse_prod ram:pouettmp.json 5 > ram:pouetnoparty.txt'
+    partydatecmd = 'c:parse_prod pouettmp:pouettmp.json 5 > pouettmp:pouetnoparty.txt'
     address command partydatecmd
-    open(ReqF,'ram:pouetnoparty.txt','r')
+    open(ReqF,'pouettmp:pouetnoparty.txt','r')
     partyyearstripped = readln(ReqF)
     partyyearstripped = substr(partyyearstripped,1,4)
     bs = close(ReqF)
@@ -167,9 +172,9 @@ if (MyReturnCode = 0) then
    SAY "Party name is:" partystripped
    SAY "Year Party is:" partyyearstripped
 
-   reltypestripped = 'c:parse_prod ram:pouettmp.json 3 > ram:pouetreltype.txt'
+   reltypestripped = 'c:parse_prod pouettmp:pouettmp.json 3 > pouettmp:pouetreltype.txt'
    address command reltypestripped
-   open(ReqF,'ram:pouetreltype.txt','r')
+   open(ReqF,'pouettmp:pouetreltype.txt','r')
    reltypestripped = readln(ReqF)
    bs = close(ReqF)
    IF LENGTH(reltypestripped) == 0 THEN DO
@@ -178,9 +183,9 @@ if (MyReturnCode = 0) then
    END
    SAY "Rel type is:" reltypestripped
 
-   relplatformstripped = 'c:parse_prod ram:pouettmp.json 20 > ram:pouetrelplatform.txt'
+   relplatformstripped = 'c:parse_prod pouettmp:pouettmp.json 20 > pouettmp:pouetrelplatform.txt'
    address command relplatformstripped
-   open(ReqF,'ram:pouetrelplatform.txt','r')
+   open(ReqF,'pouettmp:pouetrelplatform.txt','r')
    relplatformstripped = readln(ReqF)
    bs = close(ReqF)
    IF LENGTH(relplatformstripped) == 0 THEN DO
@@ -189,9 +194,9 @@ if (MyReturnCode = 0) then
    END
    SAY "Rel platform is:" relplatformstripped
 
-   pickstripped = 'c:parse_prod ram:pouettmp.json 10 > ram:pouetdownloadlink.txt'
+   pickstripped = 'c:parse_prod pouettmp:pouettmp.json 10 > pouettmp:pouetdownloadlink.txt'
    address command pickstripped
-   open(ReqF,'ram:pouetdownloadlink.txt','r')
+   open(ReqF,'pouettmp:pouetdownloadlink.txt','r')
    pickstripped = readln(ReqF)
    bs = close(ReqF)
    IF LENGTH(pickstripped) == 0 THEN DO
@@ -225,38 +230,55 @@ if (MyReturnCode = 0) then
 
       extension = substr(pickstripped,length(pickstripped)-3)
       SAY "Detected extension is ###"extension"###"
+
+      targetdir = DESTDIR || 'parties/' || partystripped || '/' || ,
+            partyyearstripped || '/' || reltypestripped || '/' || ,
+            titlestripped
        
-      makedirectory = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
-      SAY 'Creating directory:' makedirectory
-      address command makedirectory
+      if exists(targetdir) then DO
+        say "target dir already there, skipping creation"
+      END
+      ELSE DO
+        makedirectory = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
+        SAY 'Creating directory:' makedirectory
+        address command makedirectory
+      END
 
       defaultaction=1
 
       if extension == ".adf" THEN DO
-         defaultaction=0
+        SAY "alessio Detected extension is ###"extension"###"
+        defaultaction=0
         SAY "Downloading an ADF file"
-        download = 'c:wget --quiet --user-agent="Mozilla/5.0" -t 1 -O "ram:adfmount.adf" 'proxyaddress'/'pickstripped
+        download = 'c:wget --user-agent="Mozilla/5.0" -t 1 -O "pouettmp:adfmount.adf" 'proxyaddress'/'pickstripped
         address command download
 
-        download = 'mkdir -p "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf" ALL' 
+        say "check if exists"
+
+        if exists("'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf") then do
+          say "Download dir already there, reusing..."
+        end
+        else do
+          download = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf"' 
+          say download
+          address command download
+        end
+
+        download = 'c:adf_extract pouettmp:adfmount.adf "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf"' 
         say download
         address command download
 
-        download = 'c:adf_extract ram:adfmount.adf "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf"' 
-        say download
-        address command download
-
-        download = 'copy ram:adfmount.adf to "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/'titlestripped'.adf"' 
+        download = 'copy pouettmp:adfmount.adf to "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/'titlestripped'.adf"' 
         say download
         address command download
       END
 
       if extension == ".lha" THEN DO
         SAY 'This is an lha compressed file'
-        download = 'wget -q -O ram:pouetdownload.lha "'proxyaddress'/'pickstripped'"'
+        download = 'c:wget -O pouettmp:pouetdownload.lha "'proxyaddress'/'pickstripped'"'
         SAY "Download is ###"download"###"
         address command download
-        unlha = 'lha x ram:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
+        unlha = 'lha x pouettmp:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
         address command unlha
         say unlha
         bs = close(ReqF)
@@ -265,9 +287,10 @@ if (MyReturnCode = 0) then
 
       if extension == '.dms' THEN DO
         SAY 'This is a dms compressed file'
-        download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+        download = 'c:wget --user-agent="Mozilla/5.0" -O pouettmp:pouetdownload.dms 'proxyaddress'/'pickstripped
+        SAY "Download is ###"download"###"
         address command download
-        undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
+        undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u pouettmp:pouetdownload.dms'
         address command undms
         say undms
         bs = close(ReqF)
@@ -275,10 +298,11 @@ if (MyReturnCode = 0) then
       END
 
       if extension == '.DMS' THEN DO
-        SAY 'This is a dms compressed file'
-        download = 'wget --user-agent="Mozilla/5.0" -q -O ram:pouetdownload.dms 'proxyaddress'/'pickstripped
+        SAY 'This is a DMS compressed file'
+        download = 'c:wget --user-agent="Mozilla/5.0" -O pouettmp:pouetdownload.dms 'proxyaddress'/'pickstripped
+        SAY "Download is ###"download"###"
         address command download
-        undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u ram:pouetdownload.dms'
+        undms = 'xdms -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/" u pouettmp:pouetdownload.dms'
         address command undms
         say undms
         bs = close(ReqF)
@@ -286,9 +310,8 @@ if (MyReturnCode = 0) then
       END
 
       if extension == ".zip" THEN DO
-
         SAY "This is a zipped file, unzipping..."
-        download = 'c:wget --quiet -O ram:pouetdownload.zip 'proxyaddress'/'pickstripped
+        download = 'c:wget -O pouettmp:pouetdownload.zip 'proxyaddress'/'pickstripped
         SAY download
         address command download
         /*if RC = 0 THEN
@@ -299,8 +322,8 @@ if (MyReturnCode = 0) then
         */
 
 
-        /*unzip = 'unzip -n ram:pouetdownload.zip -d ''"ram:parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped"'*/
-        unzip = 'unzip -n ram:pouetdownload.zip -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
+        /*unzip = 'unzip -n pouettmp:pouetdownload.zip -d ''"pouettmp:parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped"'*/
+        unzip = 'unzip -n pouettmp:pouetdownload.zip -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
         say unzip
         address command unzip
          
@@ -311,7 +334,7 @@ if (MyReturnCode = 0) then
 
       IF defaultaction==1 THEN DO
         SAY "Downloading default file, probably executable"
-        download = 'wget --quiet -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
+        download = 'c:wget -P "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'" 'proxyaddress'/'pickstripped
         SAY download
         address command download
 
@@ -323,9 +346,14 @@ if (MyReturnCode = 0) then
        
     END
     
-    open(ReqF,'pouet:pouetlastid.txt','r')
-    pouetidold = readln(ReqF)
-    close(ReqF)
+    if exists('pouet:pouetlastid.txt') then do
+      open(ReqF,'pouet:pouetlastid.txt','r')
+      pouetidold = readln(ReqF)
+      close(ReqF)
+    end
+    else do
+      pouetidold = 0
+    end
     if pouetidold < pouetid +1 THEN DO
     	open(ReqF,'pouet:pouetlastid.txt','w')
     	say 'updating lastpouetid with 'pouetid+1
