@@ -43,6 +43,7 @@ These are my setups where this script has been succesfully tested:
 - A500 plus + Indivision ACA500Plus - wb3.1 - 1MB of Chip - Plipbox + Roadshow
 - A600 with Vampire V2 + CoffinOS + PCMCIA network card + Roadshow
 - A600 with Pistorm 600 + CaffeineOS + Plipbox + MiamiDX
+- A500 plus + A590 (dynaport.device from RobDebSmith)
 
 ## Installation
 ### PC side
@@ -99,8 +100,10 @@ Installation on the amiga is a little bit longer but it's a one time process, le
 - Open s:startup-sequence and add the following string
  ```
  Assign >NIL: POUET: RAM:
+ Assign >NIL: POUETTMP: RAM:
  ```
  This is the root directory where the downloader will store data from pouet, of course change RAM: with the path you want to use.
+ I suggest to use ramdisk only if you have at least 8mb of fast ram
  Also add the following line to the s:user-startup.sequence
  ```
  SetEnv pouetproxy x.x.x.x:9999
