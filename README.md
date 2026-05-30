@@ -43,7 +43,7 @@ These are my setups where this script has been succesfully tested:
 - A500 plus + Indivision ACA500Plus - wb3.1 - 1MB of Chip - Plipbox + Roadshow
 - A600 with Vampire V2 + CoffinOS + PCMCIA network card + Roadshow
 - A600 with Pistorm 600 + CaffeineOS + Plipbox + MiamiDX
-- A500 plus + A590 (dynaport.device from RobDebSmith)
+- A500 plus + A590 (dynaport.device from RobDevSmith)
 
 ## Installation
 ### PC side
