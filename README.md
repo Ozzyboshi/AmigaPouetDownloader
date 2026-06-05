@@ -110,7 +110,7 @@ Installation on the amiga is a little bit longer but it's a one time process, le
  ```
 Where x.x.x.x is the ipv4 adress of your PC running the proxy and 9999 is the port.
 
-Make sure *wget* and *grep* are installed and in path, this tools are preinstalled if you are using CoffinOS or Caffeine but they dont come out of the box if you are using old Workbenches like OS3.1. 
+Make sure *wget* is installed and in *c:*, this tool is preinstalled if you are using CoffinOS or Caffeine but they dont come out of the box if you are using old Workbenches like OS3.1. 
 
 The *wget* utility is usually included with the plipbox network boot disk, I think Roadshow also provides his own version. 
 
@@ -123,6 +123,7 @@ Also install :
  - adf_extract (see amiga/c directory on this repo, it must be copied into c: or in path)
  - parse_prod (see amiga/c directory on this repo, it must be copied into c: or in path)
  - pouet_party (see amiga/c directory on this repo, it must be copied into c: or in path)
+ - pouet_lastid (see amiga/c directory on this repo, it must be copied into c: or in path)
 
 ### Usage
 Open your CLI (or SHELL) and type:

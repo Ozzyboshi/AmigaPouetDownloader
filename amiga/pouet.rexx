@@ -82,16 +82,15 @@ if arg() == 0 then do
 
 	say 'start downloading from 'pouetid
 	
-	cline = 'c:wget --quiet -O pouettmp:pouettmp.html 'proxyaddress'/https://www.pouet.net/prodlist.php?order=added'
+	cline = 'c:wget --quiet -O pouettmp:pouettmp.json 'proxyaddress'/https://api.pouet.net/v1/front-page/latest-added/'
 	address command cline
 	MyReturnCode = RC
 	if (MyReturnCode = 0) then
   	do
-  		reldate = 'grep -o -E "prod.php\??which=[0-9]+" pouettmp:pouettmp.html > pouettmp:pouetlastprods.txt'
+  		reldate = 'pouet_lastid pouettmp:pouettmp.json > pouettmp:pouetlastprods.txt'
    		address command reldate
    		open(ReqF,'pouettmp:pouetlastprods.txt','r')
-   		reldatestr = readln(ReqF)
-   		pouetidend = substr(reldatestr,16,length(reldatestr)-15)
+   		pouetidend = readln(ReqF)
    		say 'go up to ' pouetidend
    		close(ReqF)
    		if (pouetid > pouetidend) then
@@ -99,7 +98,6 @@ if arg() == 0 then do
    			say 'already up to date'
    			exit
    		end
-   		
    	end
 end
 
