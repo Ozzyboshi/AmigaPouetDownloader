@@ -50,9 +50,12 @@ IF pouetid = "party" THEN DO
     IF OPEN('ReqF', 'pouettmp:pouetpartyids.txt', 'R') THEN DO
     DO WHILE ~EOF('ReqF')
         linea = READLN('ReqF')
-        pouetcommand = 'rx pouet 'linea
-        say pouetcommand
-        address command pouetcommand
+        linea = STRIP(linea)
+        IF linea ~= '' THEN DO
+            pouetcommand = 'rx pouet 'linea
+            say pouetcommand
+            address command pouetcommand
+        END
     END
     CALL CLOSE 'ReqF'
 END
