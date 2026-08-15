@@ -1,0 +1,469 @@
+; Install-AmigaPouetDownloader
+;
+; Installation script for Commodore Installer 43.x / InstallerLG
+; Target: AmigaOS 2.04 (V37) and above
+;
+; $VER: Install-AmigaPouetDownloader 1.0 (15.8.2026)
+;
+; ---------------------------------------------------------------------------
+; EXPECTED FLOPPY LAYOUT
+;
+; Source paths below are relative to the drawer holding this script, which
+; is the current directory when Workbench launches the Installer.
+;
+;   PouetDL:
+;     Install-AmigaPouetDownloader
+;     Install-AmigaPouetDownloader.info   <- Default Tool = Installer
+;     Installer                           <- Installer 43.3 binary, in root
+;     Disk.info
+;     data/
+;       pouet.rexx
+;       c/
+;         adf_extract
+;         parse_prod
+;         pouet_party
+;         pouet_lastid
+;
+; ---------------------------------------------------------------------------
+; WHY THINGS GO WHERE THEY GO
+;
+; pouet.rexx invokes its four helper commands with an explicit "c:" prefix
+; (c:parse_prod, c:adf_extract, c:pouet_party, c:pouet_lastid), so putting
+; them anywhere else on the path is not enough - they must live in C:.
+;
+; By contrast MKDIR, lha, unzip and xdms are invoked without a prefix, so
+; for those any directory on the path will do.
+;
+; The script bails out immediately with "Please assign pouet:" or
+; "Please assign pouettmp:" if those two assigns are missing, so they are
+; mandatory rather than optional.
+;
+; The proxy address is read with "getenv pouetproxy", which reads ENV:.
+; ---------------------------------------------------------------------------
+
+
+;=============================================================================
+; 1. CONSTANTS
+;=============================================================================
+
+(set #app        "AmigaPouetDownloader")
+(set #min-osver  37)                 ; 37 = OS 2.04
+
+(set #src-rexx   "data/pouet.rexx")
+(set #src-c      "data/c")
+
+
+;=============================================================================
+; 2. USER-VISIBLE STRINGS
+;    In a localised release these would live in a catalog and be pulled in
+;    with (database "language") plus per-language string sets.
+;=============================================================================
+
+(set #welcome
+  (cat "Welcome to the " #app-name " installation.\n\n"
+       "This script will:\n"
+       "  - copy pouet.rexx to REXX:\n"
+       "  - copy adf_extract, parse_prod, pouet_party and pouet_lastid to C:\n"
+       "  - add the POUET: and POUETTMP: assigns to S:User-Startup\n"
+       "  - set the pouetproxy environment variable in ENV: and ENVARC:\n\n"
+       "At the end you will be told which external tools are still missing."))
+
+(set #bad-os
+  "AmigaPouetDownloader requires AmigaOS 2.04 (V37) or higher.")
+
+; --- REXX: destination ------------------------------------------------------
+(set #ask-rexx
+  (cat "Where should pouet.rexx be copied?\n\n"
+       "It has to end up in the directory the REXX: assign points at, "
+       "otherwise \"rx pouet\" will not find it."))
+
+(set #ask-rexx-help
+  (cat "On a standard system REXX: points at S:. If your system has no "
+       "REXX: assign, pick a drawer anyway and remember to create the "
+       "assign yourself.\n\n"
+       "The file name must stay pouet.rexx, because rx appends the .rexx "
+       "extension to the name you give it on the command line.\n\n"
+       @askdir-help))
+
+; --- C: destination ---------------------------------------------------------
+(set #ask-cdir
+  (cat "Where should the four helper commands be copied?\n\n"
+       "adf_extract, parse_prod, pouet_party and pouet_lastid are called "
+       "by the arexx script with an explicit \"c:\" prefix, so they must "
+       "go into C: and not into some other directory on the path."))
+
+(set #ask-cdir-help
+  (cat "The arexx script runs these as \"c:parse_prod\", \"c:adf_extract\" "
+       "and so on. Installing them elsewhere will not work even if that "
+       "directory is on your path.\n\n" @askdir-help))
+
+; --- POUET: -----------------------------------------------------------------
+(set #ask-pouet
+  (cat "Where should downloaded releases be stored?\n\n"
+       "This is what the POUET: assign will point at. Underneath it the "
+       "script builds a parties/<party>/<year>/<type>/<title> tree.\n\n"
+       "This needs real space: pick a hard disk, not the ramdisk."))
+
+(set #ask-pouet-help
+  (cat "POUET: is the root of the permanent archive. The arexx script "
+       "exits straight away with \"Please assign pouet:\" if this assign "
+       "does not exist.\n\n" @askdir-help))
+
+; --- POUETTMP: --------------------------------------------------------------
+(set #ask-tmp
+  (cat "Where should the scratch directory live?\n\n"
+       "This is what the POUETTMP: assign will point at. JSON responses "
+       "from pouet and downloaded archives land here before being "
+       "unpacked.\n\n"
+       "RAM: is the best choice if you have at least 8 MB of fast ram, "
+       "otherwise use a directory on a hard disk."))
+
+(set #ask-tmp-help
+  (cat "POUETTMP: sees heavy traffic: every downloaded release passes "
+       "through it before being unpacked into POUET:. A ramdisk is much "
+       "faster but consumes as much memory as the largest file you "
+       "download.\n\n" @askdir-help))
+
+; --- proxy ------------------------------------------------------------------
+(set #ask-proxy
+  (cat "Address of the nodejs proxy (pouetproxy variable):\n\n"
+       "This is the IPv4 address and port of the PC running the docker "
+       "container, in the form x.x.x.x:9999"))
+
+(set #ask-proxy-help
+  (cat "The script reads this value with \"getenv pouetproxy\" and "
+       "prepends it to the https URL it wants, for example:\n\n"
+       "  wget -O ... 192.168.1.10:9999/https://api.pouet.net/v1/prod/?id=1\n\n"
+       "Give it without a scheme, as shown in the README. wget prepends "
+       "http:// by itself, because a URI scheme must start with a letter "
+       "and 192.168.1.10 starts with a digit, so there is no ambiguity.\n\n"
+       "The port must match the one exposed in your docker-compose.yml "
+       "(9999 by default).\n\n" @askstring-help))
+
+(set #bad-proxy
+  (cat "That proxy address is too short to be valid.\n\n"
+       "The arexx script rejects anything shorter than 4 characters, so "
+       "it would fail at run time. Please try again."))
+
+; --- startup ----------------------------------------------------------------
+(set #ask-startup
+  (cat "Should the POUET: and POUETTMP: assigns be added to "
+       "S:User-Startup automatically?\n\n"
+       "Without these assigns the arexx script refuses to run."))
+
+(set #ask-startup-help
+  (cat "The lines are inserted between ;BEGIN and ;END markers carrying "
+       "this application's name, so reinstalling replaces the block "
+       "instead of duplicating it.\n\n"
+       "If you say no, add the two Assign lines to your startup yourself."))
+
+; --- progress ---------------------------------------------------------------
+(set #working-rexx  "Copying pouet.rexx...")
+(set #working-c     "Copying the helper commands...")
+(set #working-env   "Setting the pouetproxy variable...")
+
+
+;=============================================================================
+; 3. HELPER PROCEDURES
+;
+; Note: parameters in (procedure) are only supported from Installer 43
+; onwards. These use global variables instead, which is uglier but keeps
+; the script working on 42 as well.
+;=============================================================================
+
+; Write a persistent environment variable.
+; Input: #ev-name, #ev-value
+;
+; setenv only writes to ENV:, which lives in RAM and is lost on reboot.
+; Persistence comes from ENVARC:, which the Startup-Sequence copies back
+; into ENV: at every boot, so the file has to be written to both.
+(procedure P_SetEnvVar
+  (textfile
+    (dest   (tackon "ENV:" #ev-name))
+    (append #ev-value)
+  )
+  (if (exists "ENVARC:" (noreq))
+    (textfile
+      (dest   (tackon "ENVARC:" #ev-name))
+      (append #ev-value)
+    )
+  )
+)
+
+; Create a directory only if it is not already there.
+; Input: #md-dir
+(procedure P_MakeDirIfNeeded
+  (if (= 0 (exists #md-dir (noreq)))
+    (makedir #md-dir)
+  )
+)
+
+; Append a line to #missing if command #chk-cmd is not present in C:.
+; Input: #chk-cmd, #chk-url
+(procedure P_CheckTool
+  (if (= 0 (exists (tackon "C:" #chk-cmd) (noreq)))
+    (set #missing (cat #missing "  " #chk-cmd "\n      " #chk-url "\n"))
+  )
+)
+
+
+;=============================================================================
+; 4. OPERATING SYSTEM CHECK
+;=============================================================================
+
+(set #osver (/ (getversion "exec.library" (resident)) 65536))
+
+(if (< #osver #min-osver)
+  (abort #bad-os)
+)
+
+
+;=============================================================================
+; 5. QUESTIONS
+;=============================================================================
+
+(welcome #welcome)
+
+; --- where the arexx script goes --------------------------------------------
+; Offer REXX: as the default if the assign exists, otherwise fall back to S:.
+(if (exists "REXX:" (noreq))
+  (set #def-rexx "REXX:")
+  (set #def-rexx "S:")
+)
+
+(set #rexxdir
+  (askdir
+    (prompt  #ask-rexx)
+    (help    #ask-rexx-help)
+    (default #def-rexx)
+  )
+)
+
+; --- where the helper commands go -------------------------------------------
+(set #cdir
+  (askdir
+    (prompt  #ask-cdir)
+    (help    #ask-cdir-help)
+    (default "C:")
+  )
+)
+
+; --- permanent archive ------------------------------------------------------
+(set #pouetdir
+  (askdir
+    (prompt  #ask-pouet)
+    (help    #ask-pouet-help)
+    (default @default-dest)
+    (newpath)
+  )
+)
+
+; --- scratch directory ------------------------------------------------------
+(set #tmpdir
+  (askdir
+    (prompt  #ask-tmp)
+    (help    #ask-tmp-help)
+    (default "RAM:")
+    (newpath)
+  )
+)
+
+; --- proxy address ----------------------------------------------------------
+; Mirror the "length(proxyaddress) < 4" test the arexx script performs, so
+; an empty or nonsense value is caught here instead of at run time.
+(set #proxy "")
+(while (< (strlen #proxy) 4)
+  (
+    (set #proxy
+      (askstring
+        (prompt  #ask-proxy)
+        (help    #ask-proxy-help)
+        (default "192.168.1.10:9999")
+      )
+    )
+    (if (< (strlen #proxy) 4)
+      (message #bad-proxy)
+    )
+  )
+)
+
+; Tell the Installer where things ended up, for its own final message.
+(set @default-dest #pouetdir)
+
+
+;=============================================================================
+; 6. FILE INSTALLATION
+;=============================================================================
+
+(complete 10)
+
+; --- the arexx script -------------------------------------------------------
+(working #working-rexx)
+(copyfiles
+  (prompt  "Copying pouet.rexx to " #rexxdir)
+  (help    @copyfiles-help)
+  (source  #src-rexx)
+  (dest    #rexxdir)
+)
+
+(complete 25)
+
+; --- the four helper commands -----------------------------------------------
+; (choices) names them explicitly rather than using (all), so that any
+; stray file left in data/c during development does not get installed.
+(working #working-c)
+(copyfiles
+  (prompt  "Copying the helper commands to " #cdir)
+  (help    @copyfiles-help)
+  (source  #src-c)
+  (dest    #cdir)
+  (choices "adf_extract"
+           "parse_prod"
+           "pouet_party"
+           "pouet_lastid")
+)
+
+(complete 50)
+
+; --- make sure the assign targets exist -------------------------------------
+(set #md-dir #pouetdir)
+(P_MakeDirIfNeeded)
+
+(set #md-dir #tmpdir)
+(P_MakeDirIfNeeded)
+
+(complete 60)
+
+
+;=============================================================================
+; 7. ENVIRONMENT VARIABLE
+;=============================================================================
+
+(working #working-env)
+
+(set #ev-name  "pouetproxy")
+(set #ev-value #proxy)
+(P_SetEnvVar)
+
+(complete 75)
+
+
+;=============================================================================
+; 8. ASSIGNS IN S:User-Startup
+;
+; (startup) inserts the lines between
+;     ;BEGIN AmigaPouetDownloader ... ;END AmigaPouetDownloader
+; replacing any existing block carrying the same name, which is what makes
+; reinstallation safe. Never append to User-Startup by hand from a script.
+;=============================================================================
+
+(if (askbool
+      (prompt  #ask-startup)
+      (help    #ask-startup-help)
+      (default 1)
+    )
+  (startup #app
+    (prompt "Adding the POUET: and POUETTMP: assigns to S:User-Startup")
+    (help   #ask-startup-help)
+    (command
+      (cat "Assign >NIL: POUET: \""    #pouetdir "\"\n"
+           "Assign >NIL: POUETTMP: \"" #tmpdir   "\"\n"))
+  )
+)
+
+; Make the assigns available right now, so the user can try the script
+; without rebooting first. These are skipped in PRETEND mode unless
+; (safe) is added, so they will not show up in a dry-run log.
+(run (cat "Assign >NIL: POUET: \""    #pouetdir "\""))
+(run (cat "Assign >NIL: POUETTMP: \"" #tmpdir   "\""))
+
+(complete 90)
+
+
+;=============================================================================
+; 9. EXTERNAL DEPENDENCY CHECK
+;
+; None of these can be redistributed on this floppy, so all we can do is
+; report which ones are missing and where to get them.
+;
+; Caveat on mkdir: AmigaOS ships C:MakeDir, not C:mkdir, so finding a
+; C:mkdir at all is a good sign. It is not proof that it is the mkdir13
+; version the script actually needs, and there is no clean way to tell
+; the difference from here.
+;=============================================================================
+
+(set #missing "")
+
+(set #chk-cmd "wget")
+(set #chk-url "bundled with the plipbox boot disk, with Roadshow, or on Aminet")
+(P_CheckTool)
+
+(set #chk-cmd "mkdir")
+(set #chk-url "http://aminet.net/util/sys/mkdir13.lha")
+(P_CheckTool)
+
+(set #chk-cmd "lha")
+(set #chk-url "https://aminet.net/package/util/arc/lha")
+(P_CheckTool)
+
+(set #chk-cmd "unzip")
+(set #chk-url "http://aminet.net/package/util/arc/UnZip")
+(P_CheckTool)
+
+(set #chk-cmd "xdms")
+(set #chk-url "http://aminet.net/package/util/arc/xDMS")
+(P_CheckTool)
+
+(if (> (strlen #missing) 0)
+  (message
+    (cat "Heads up: the following commands were not found in C: and have "
+         "to be installed by hand, because they cannot be redistributed "
+         "with this installer:\n\n"
+         #missing "\n"
+         "If they are already somewhere else on your path you can ignore "
+         "this, with one exception: mkdir must be the mkdir13 version and "
+         "not the one from AmigaOS, whose syntax differs between OS "
+         "releases."))
+)
+
+(complete 100)
+
+
+;=============================================================================
+; 10. DONE
+;=============================================================================
+
+(message
+  (cat "Installation complete.\n\n"
+       "Assigns:\n"
+       "  POUET:    " #pouetdir "\n"
+       "  POUETTMP: " #tmpdir "\n\n"
+       "Environment variable:\n"
+       "  pouetproxy = " #proxy "\n\n"
+       "Make sure RexxMast is running before you use the script, "
+       "otherwise \"rx\" will not work.\n\n"
+       "Then from a Shell:\n"
+       "  rx pouet 93426\n"
+       "  rx pouet party 1550 2016\n\n"
+       "Note: if you picked a path inside RAM: for POUET: or POUETTMP:, "
+       "that directory will not exist after the next reboot and the "
+       "assign will fail. Use bare RAM: or a path on a hard disk."))
+
+(exit (quiet))
+
+
+;=============================================================================
+; TOOLTYPES FOR THIS SCRIPT'S .info
+; (Default Tool = Installer, with the binary sitting in the floppy root)
+;
+;   APPNAME=AmigaPouetDownloader
+;   MINUSER=novice
+;   DEFUSER=average
+;   PRETEND
+;   LOGFILE=RAM:Install.log
+;
+; While developing, always run it from a Shell:
+;   Installer SCRIPT Install-AmigaPouetDownloader PRETEND LOGFILE RAM:inst.log
+; PRETEND touches nothing on disk, and the log file is the only decent
+; debugging facility the Installer offers.
+;=============================================================================
