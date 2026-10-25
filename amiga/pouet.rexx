@@ -8,6 +8,10 @@ IF pouetidend < pouetid THEN DO
    pouetidend=pouetid
 END
 
+/* MAKEDIR() used by MakeDirAll lives in rexxsupport.library */
+IF ~SHOW('L','rexxsupport.library') THEN
+  CALL ADDLIB('rexxsupport.library',0,-30,0)
+
 if exists('pouet:') == 0 THEN DO
   SAY 'Please assign pouet:'
   EXIT
@@ -240,9 +244,8 @@ if (MyReturnCode = 0) then
         say "target dir already there, skipping creation"
       END
       ELSE DO
-        makedirectory = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
-        SAY 'Creating directory:' makedirectory
-        address command makedirectory
+        SAY 'Creating directory:' targetdir
+        CALL MakeDirAll targetdir
       END
 
       defaultaction=1
@@ -256,13 +259,13 @@ if (MyReturnCode = 0) then
 
         say "check if exists"
 
-        if exists("'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf") then do
+        adfdir = targetdir || '/adf'
+        if exists(adfdir) then do
           say "Download dir already there, reusing..."
         end
         else do
-          download = 'MKDIR "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf"' 
-          say download
-          address command download
+          say 'Creating directory:' adfdir
+          CALL MakeDirAll adfdir
         end
 
         download = 'c:adf_extract pouettmp:adfmount.adf "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/adf"' 
@@ -369,3 +372,31 @@ if (MyReturnCode = 0) then
   end
 SAY 'response >' MyReturnCode
 END /* END LOOP */
+EXIT
+
+
+/* Create directory path, including any missing parents (like mkdir -p).
+   MAKEDIR() only creates one level, so walk the path one component at a
+   time after the volume/assign part. Returns 1 on success, 0 on failure. */
+MakeDirAll: PROCEDURE
+  PARSE ARG path
+  path = STRIP(path, 'T', '/')
+  IF EXISTS(path) THEN RETURN 1
+
+  colon = POS(':', path)
+  done = LEFT(path, colon)
+  rest = SUBSTR(path, colon + 1)
+
+  DO WHILE rest ~= ''
+    PARSE VAR rest part '/' rest
+    IF part == '' THEN ITERATE
+    IF done == '' | RIGHT(done, 1) == ':' THEN done = done || part
+    ELSE done = done || '/' || part
+    IF ~EXISTS(done) THEN DO
+      IF ~MAKEDIR(done) THEN DO
+        SAY 'Cannot create directory' done
+        RETURN 0
+      END
+    END
+  END
+  RETURN 1

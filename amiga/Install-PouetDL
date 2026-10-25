@@ -1,9 +1,9 @@
-; Install-AmigaPouetDownloader
+; Install-PouetDL
 ;
 ; Installation script for Commodore Installer 43.x / InstallerLG
 ; Target: AmigaOS 2.04 (V37) and above
 ;
-; $VER: Install-AmigaPouetDownloader 1.0 (15.8.2026)
+; $VER: Install-PouetDL 1.0 (15.8.2026)
 ;
 ; ---------------------------------------------------------------------------
 ; EXPECTED FLOPPY LAYOUT
@@ -12,17 +12,19 @@
 ; is the current directory when Workbench launches the Installer.
 ;
 ;   PouetDL:
-;     Install-AmigaPouetDownloader
-;     Install-AmigaPouetDownloader.info   <- Default Tool = Installer
-;     Installer                           <- Installer 43.3 binary, in root
+;     Install-PouetDL
+;     Install-PouetDL.info   <- Default Tool = Installer
+;     Installer              <- Installer 43.3 binary, in root
 ;     Disk.info
-;     data/
-;       pouet.rexx
-;       c/
-;         adf_extract
-;         parse_prod
-;         pouet_party
-;         pouet_lastid
+;     pouet.rexx
+;     c/
+;       adf_extract
+;       parse_prod
+;       pouet_party
+;       pouet_lastid
+;       wget                 <- copied to C: only if not on the path
+;     libs/
+;       usergroup.library    <- needed by wget, copied together with it
 ;
 ; ---------------------------------------------------------------------------
 ; WHY THINGS GO WHERE THEY GO
@@ -31,8 +33,9 @@
 ; (c:parse_prod, c:adf_extract, c:pouet_party, c:pouet_lastid), so putting
 ; them anywhere else on the path is not enough - they must live in C:.
 ;
-; By contrast MKDIR, lha, unzip and xdms are invoked without a prefix, so
-; for those any directory on the path will do.
+; By contrast lha, unzip and xdms are invoked without a prefix, so for
+; those any directory on the path will do. Directories are created by
+; pouet.rexx itself through rexxsupport.library, so no mkdir is needed.
 ;
 ; The script bails out immediately with "Please assign pouet:" or
 ; "Please assign pouettmp:" if those two assigns are missing, so they are
@@ -49,8 +52,9 @@
 (set #app        "AmigaPouetDownloader")
 (set #min-osver  37)                 ; 37 = OS 2.04
 
-(set #src-rexx   "data/pouet.rexx")
-(set #src-c      "data/c")
+(set #src-rexx   "pouet.rexx")
+(set #src-c      "c")
+(set #src-libs   "libs")
 
 
 ;=============================================================================
@@ -60,7 +64,7 @@
 ;=============================================================================
 
 (set #welcome
-  (cat "Welcome to the " #app-name " installation.\n\n"
+  (cat "Welcome to the " #app " installation.\n\n"
        "This script will:\n"
        "  - copy pouet.rexx to REXX:\n"
        "  - copy adf_extract, parse_prod, pouet_party and pouet_lastid to C:\n"
@@ -271,6 +275,17 @@
 ; --- proxy address ----------------------------------------------------------
 ; Mirror the "length(proxyaddress) < 4" test the arexx script performs, so
 ; an empty or nonsense value is caught here instead of at run time.
+;
+; There is no sensible default for this, so the question is always asked:
+; in Novice mode askstring would silently take the default, so the user
+; level is raised to Average around it and put back afterwards. On a
+; reinstall the current value of the variable is offered as the default.
+(set #proxy-default (getenv "pouetproxy"))
+(if (< (strlen #proxy-default) 4)
+  (set #proxy-default "192.168.1.10:9999")
+)
+
+(set #old-level (user 1))
 (set #proxy "")
 (while (< (strlen #proxy) 4)
   (
@@ -278,7 +293,7 @@
       (askstring
         (prompt  #ask-proxy)
         (help    #ask-proxy-help)
-        (default "192.168.1.10:9999")
+        (default #proxy-default)
       )
     )
     (if (< (strlen #proxy) 4)
@@ -286,6 +301,7 @@
     )
   )
 )
+(user #old-level)
 
 ; Tell the Installer where things ended up, for its own final message.
 (set @default-dest #pouetdir)
@@ -310,7 +326,7 @@
 
 ; --- the four helper commands -----------------------------------------------
 ; (choices) names them explicitly rather than using (all), so that any
-; stray file left in data/c during development does not get installed.
+; stray file left in c/ during development does not get installed.
 (working #working-c)
 (copyfiles
   (prompt  "Copying the helper commands to " #cdir)
@@ -383,24 +399,42 @@
 ;=============================================================================
 ; 9. EXTERNAL DEPENDENCY CHECK
 ;
-; None of these can be redistributed on this floppy, so all we can do is
-; report which ones are missing and where to get them.
-;
-; Caveat on mkdir: AmigaOS ships C:MakeDir, not C:mkdir, so finding a
-; C:mkdir at all is a good sign. It is not proof that it is the mkdir13
-; version the script actually needs, and there is no clean way to tell
-; the difference from here.
+; wget is the only one we ship: if it is not on the path, the copy in c/
+; goes to C: and the usergroup.library it needs goes to LIBS:. None of the
+; others can be redistributed on this floppy, so all we can do is report
+; which ones are missing and where to get them.
 ;=============================================================================
 
+; Which, unlike P_CheckTool, looks along the whole path, so a wget the user
+; already has somewhere else is left alone. It returns WARN when the command
+; is not found. (safe) runs it in PRETEND mode too.
+; usergroup.library goes in with copyfiles, and only if LIBS: does not
+; already have one, so an existing copy is never replaced. Not copylib:
+; InstallerLG's getversion reads 0 from this library, and copylib then
+; silently copies nothing even when the destination is missing.
+(set #need-wget (<> 0 (run "Which >NIL: wget" (safe))))
+
+(if #need-wget
+  (copyfiles
+    (prompt  "wget was not found on the path, copying the bundled one to C:")
+    (help    @copyfiles-help)
+    (source  #src-c)
+    (dest    "C:")
+    (choices "wget")
+  )
+)
+
+(if (and #need-wget (= 0 (exists "LIBS:usergroup.library" (noreq))))
+  (copyfiles
+    (prompt  "Copying usergroup.library, needed by wget, to LIBS:")
+    (help    @copyfiles-help)
+    (source  #src-libs)
+    (dest    "LIBS:")
+    (choices "usergroup.library")
+  )
+)
+
 (set #missing "")
-
-(set #chk-cmd "wget")
-(set #chk-url "bundled with the plipbox boot disk, with Roadshow, or on Aminet")
-(P_CheckTool)
-
-(set #chk-cmd "mkdir")
-(set #chk-url "http://aminet.net/util/sys/mkdir13.lha")
-(P_CheckTool)
 
 (set #chk-cmd "lha")
 (set #chk-url "https://aminet.net/package/util/arc/lha")
@@ -421,9 +455,7 @@
          "with this installer:\n\n"
          #missing "\n"
          "If they are already somewhere else on your path you can ignore "
-         "this, with one exception: mkdir must be the mkdir13 version and "
-         "not the one from AmigaOS, whose syntax differs between OS "
-         "releases."))
+         "this."))
 )
 
 (complete 100)
@@ -463,7 +495,7 @@
 ;   LOGFILE=RAM:Install.log
 ;
 ; While developing, always run it from a Shell:
-;   Installer SCRIPT Install-AmigaPouetDownloader PRETEND LOGFILE RAM:inst.log
+;   Installer SCRIPT Install-PouetDL PRETEND LOGFILE RAM:inst.log
 ; PRETEND touches nothing on disk, and the log file is the only decent
 ; debugging facility the Installer offers.
 ;=============================================================================

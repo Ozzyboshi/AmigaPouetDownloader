@@ -96,7 +96,6 @@ c9dbaebfab063efe25b74d2ae6b70bd3a0a321dc74207b5318cc17f36ec1cbfd
 ### Amiga side
 Installation on the amiga is a little bit longer but it's a one time process, let's go through all necessary
 - copy the file pouet.rexx in this repository under directory "amiga" into rexx: of your real Amiga.
-- Download http://aminet.net/util/sys/mkdir13.lha into your amiga, uncompress it and copy file mkdir to c:, this is necessary since I cant rely on mkdir command from amigaos since the syntax changes from os to os.
 - Open s:startup-sequence and add the following string
  ```
  Assign >NIL: POUET: RAM:
