@@ -65,24 +65,25 @@
 
 (set #welcome
   (cat "Welcome to the " #app " installation.\n\n"
-       "This script will:\n"
-       "  - copy pouet.rexx to REXX:\n"
-       "  - copy adf_extract, parse_prod, pouet_party and pouet_lastid to C:\n"
-       "  - add the POUET: and POUETTMP: assigns to S:User-Startup\n"
-       "  - set the pouetproxy environment variable in ENV: and ENVARC:\n\n"
-       "At the end you will be told which external tools are still missing."))
+       "It installs pouet.rexx with its helper commands, "
+       "sets up the POUET: and POUETTMP: assigns and "
+       "stores the proxy address."))
 
 (set #bad-os
   "AmigaPouetDownloader requires AmigaOS 2.04 (V37) or higher.")
 
+; Prompts are kept to two or three short lines: the Installer window has a
+; fixed size and text that does not fit is drawn over the gadgets below it.
+; Anything longer belongs in the matching -help string.
+
 ; --- REXX: destination ------------------------------------------------------
 (set #ask-rexx
-  (cat "Where should pouet.rexx be copied?\n\n"
-       "It has to end up in the directory the REXX: assign points at, "
-       "otherwise \"rx pouet\" will not find it."))
+  "Where should pouet.rexx go?\nPick the drawer REXX: points at.")
 
 (set #ask-rexx-help
-  (cat "On a standard system REXX: points at S:. If your system has no "
+  (cat "pouet.rexx has to end up in the directory the REXX: assign "
+       "points at, otherwise \"rx pouet\" will not find it.\n\n"
+       "On a standard system REXX: points at S:. If your system has no "
        "REXX: assign, pick a drawer anyway and remember to create the "
        "assign yourself.\n\n"
        "The file name must stay pouet.rexx, because rx appends the .rexx "
@@ -91,48 +92,42 @@
 
 ; --- C: destination ---------------------------------------------------------
 (set #ask-cdir
-  (cat "Where should the four helper commands be copied?\n\n"
-       "adf_extract, parse_prod, pouet_party and pouet_lastid are called "
-       "by the arexx script with an explicit \"c:\" prefix, so they must "
-       "go into C: and not into some other directory on the path."))
+  "Where should the helper commands go?\nThey must be in C: to work.")
 
 (set #ask-cdir-help
-  (cat "The arexx script runs these as \"c:parse_prod\", \"c:adf_extract\" "
-       "and so on. Installing them elsewhere will not work even if that "
+  (cat "adf_extract, parse_prod, pouet_party and pouet_lastid are run by "
+       "the arexx script as \"c:parse_prod\", \"c:adf_extract\" and so "
+       "on. Installing them elsewhere will not work even if that "
        "directory is on your path.\n\n" @askdir-help))
 
 ; --- POUET: -----------------------------------------------------------------
 (set #ask-pouet
-  (cat "Where should downloaded releases be stored?\n\n"
-       "This is what the POUET: assign will point at. Underneath it the "
-       "script builds a parties/<party>/<year>/<type>/<title> tree.\n\n"
-       "This needs real space: pick a hard disk, not the ramdisk."))
+  "Where should downloads be stored (POUET:)?\nPick a hard disk (not RAM:)")
 
 (set #ask-pouet-help
-  (cat "POUET: is the root of the permanent archive. The arexx script "
-       "exits straight away with \"Please assign pouet:\" if this assign "
-       "does not exist.\n\n" @askdir-help))
+  (cat "POUET: is the root of the permanent archive. Underneath it the "
+       "script builds a parties/<party>/<year>/<type>/<title> tree, so "
+       "it needs real space.\n\n"
+       "The arexx script exits straight away with \"Please assign "
+       "pouet:\" if this assign does not exist.\n\n" @askdir-help))
 
 ; --- POUETTMP: --------------------------------------------------------------
 (set #ask-tmp
-  (cat "Where should the scratch directory live?\n\n"
-       "This is what the POUETTMP: assign will point at. JSON responses "
-       "from pouet and downloaded archives land here before being "
-       "unpacked.\n\n"
-       "RAM: is the best choice if you have at least 8 MB of fast ram, "
-       "otherwise use a directory on a hard disk."))
+  "Scratch directory (POUETTMP:)?\nRAM: is fine with 8 MB of fast ram.")
 
 (set #ask-tmp-help
-  (cat "POUETTMP: sees heavy traffic: every downloaded release passes "
-       "through it before being unpacked into POUET:. A ramdisk is much "
-       "faster but consumes as much memory as the largest file you "
-       "download.\n\n" @askdir-help))
+  (cat "JSON responses from pouet and downloaded archives land in "
+       "POUETTMP: before being unpacked into POUET:.\n\n"
+       "A ramdisk is much faster but consumes as much memory as the "
+       "largest file you download, so with less than 8 MB of fast ram "
+       "use a directory on a hard disk.\n\n"
+       "Use bare RAM:, not a drawer inside it: that drawer is gone after "
+       "a reboot and the assign in S:User-Startup would fail.\n\n"
+       @askdir-help))
 
 ; --- proxy ------------------------------------------------------------------
 (set #ask-proxy
-  (cat "Address of the nodejs proxy (pouetproxy variable):\n\n"
-       "This is the IPv4 address and port of the PC running the docker "
-       "container, in the form x.x.x.x:9999"))
+  "Address of the pouet proxy\n(the PC running docker), as x.x.x.x:9999")
 
 (set #ask-proxy-help
   (cat "The script reads this value with \"getenv pouetproxy\" and "
@@ -145,15 +140,12 @@
        "(9999 by default).\n\n" @askstring-help))
 
 (set #bad-proxy
-  (cat "That proxy address is too short to be valid.\n\n"
-       "The arexx script rejects anything shorter than 4 characters, so "
-       "it would fail at run time. Please try again."))
+  "That proxy address is too short to be valid.\nPlease try again.")
 
 ; --- startup ----------------------------------------------------------------
 (set #ask-startup
-  (cat "Should the POUET: and POUETTMP: assigns be added to "
-       "S:User-Startup automatically?\n\n"
-       "Without these assigns the arexx script refuses to run."))
+  (cat "Add the POUET: and POUETTMP: assigns\nto S:User-Startup?\n\n"
+       "pouet.rexx will not run without them."))
 
 (set #ask-startup-help
   (cat "The lines are inserted between ;BEGIN and ;END markers carrying "
@@ -450,12 +442,10 @@
 
 (if (> (strlen #missing) 0)
   (message
-    (cat "Heads up: the following commands were not found in C: and have "
-         "to be installed by hand, because they cannot be redistributed "
-         "with this installer:\n\n"
+    (cat "These commands were not found in C:\n"
+         "and must be installed by hand:\n\n"
          #missing "\n"
-         "If they are already somewhere else on your path you can ignore "
-         "this."))
+         "Ignore this if they are elsewhere on your path."))
 )
 
 (complete 100)
@@ -467,19 +457,12 @@
 
 (message
   (cat "Installation complete.\n\n"
-       "Assigns:\n"
-       "  POUET:    " #pouetdir "\n"
-       "  POUETTMP: " #tmpdir "\n\n"
-       "Environment variable:\n"
-       "  pouetproxy = " #proxy "\n\n"
-       "Make sure RexxMast is running before you use the script, "
-       "otherwise \"rx\" will not work.\n\n"
-       "Then from a Shell:\n"
+       "POUET: " #pouetdir "\n"
+       "POUETTMP: " #tmpdir "\n"
+       "pouetproxy: " #proxy "\n\n"
+       "With RexxMast running, from a Shell:\n"
        "  rx pouet 93426\n"
-       "  rx pouet party 1550 2016\n\n"
-       "Note: if you picked a path inside RAM: for POUET: or POUETTMP:, "
-       "that directory will not exist after the next reboot and the "
-       "assign will fail. Use bare RAM: or a path on a hard disk."))
+       "  rx pouet party 1550 2016"))
 
 (exit (quiet))
 
