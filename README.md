@@ -31,8 +31,17 @@ This works fine but you requires a modern machine with nodejs, so... not neat so
 
 You can find in this repository the docker stuff to get the nodejs up and running and the Amiga arexx script.
 
+### Without the PC: bebboget
+The script can also download straight from the Amiga with [bebboget](https://aminet.net/package/comm/net/bebboget), a small command line tool that does HTTPS (up to TLS 1.3) by itself and only needs a bsdsocket.library.
+
+No PC needed, but the encryption is heavy for our old CPUs: expect about 5 kB/s on a 68000 and 30-50 kB/s on a 68020. If a proxy is configured too, the script retries any download bebboget fails with wget through the proxy.
+
+The floppy and the *amiga/c* directory carry a modified bebboget 1.11 that also handles servers asking for a TLS 1.3 HelloRetryRequest or NIST curve key exchange, such as files.scene.org, which the Aminet release cannot download from. Its source is at https://github.com/Ozzyboshi/bebboget/tree/tls13-hrr-nist-ecdhe; licenses for it and for wget are in *amiga/licenses*.
+
+The download method is chosen with the *pouetfetcher* environment variable: *wget* (the default) or *bebboget*. The installer asks for it and preselects bebboget on 68020 or better.
+
 ## Requirements
-- A x86/x64 PC connected to the internet with Docker+Docker composer installed (tested with Ubuntu)
+- A x86/x64 PC connected to the internet with Docker+Docker composer installed (tested with Ubuntu), not needed if you use bebboget
 - A classic amiga with 1 meg of ram, hard drive and a connection to the internet + tcp/ip stack.
 
 The PC and the Amiga must be able to talk at IP level, in particular the Amiga must be able to reach the PC at the port specified inside the docker-compose.yml (default is port 9999).
@@ -108,6 +117,12 @@ Installation on the amiga is a little bit longer but it's a one time process, le
  SetEnv pouetproxy x.x.x.x:9999
  ```
 Where x.x.x.x is the ipv4 adress of your PC running the proxy and 9999 is the port.
+
+If you want to use bebboget instead of wget, also add
+ ```
+ SetEnv pouetfetcher bebboget
+ ```
+and copy *bebboget* (68020+) or *bebboget00* (68000) from *amiga/c* in this repository to *c:bebboget*. With bebboget the pouetproxy line is optional and only used as a fallback.
 
 Make sure *wget* is installed and in *c:*, this tool is preinstalled if you are using CoffinOS or Caffeine but they dont come out of the box if you are using old Workbenches like OS3.1. 
 

@@ -22,9 +22,12 @@
 ;       parse_prod
 ;       pouet_party
 ;       pouet_lastid
-;       wget                 <- copied to C: only if not on the path
+;       wget                 <- copied to C: if needed and not on the path
+;       bebboget             <- 68020+ build, copied to C: if picked
+;       bebboget00           <- 68000 build, copied to C:bebboget if picked
 ;     libs/
 ;       usergroup.library    <- needed by wget, copied together with it
+;     licenses/              <- licenses of wget and bebboget, not installed
 ;
 ; ---------------------------------------------------------------------------
 ; WHY THINGS GO WHERE THEY GO
@@ -41,7 +44,8 @@
 ; "Please assign pouettmp:" if those two assigns are missing, so they are
 ; mandatory rather than optional.
 ;
-; The proxy address is read with "getenv pouetproxy", which reads ENV:.
+; The download method and the proxy address end up in ENV:pouetfetcher
+; and ENV:pouetproxy (plus ENVARC:), which pouet.rexx reads at start-up.
 ; ---------------------------------------------------------------------------
 
 
@@ -67,7 +71,7 @@
   (cat "Welcome to the " #app " installation.\n\n"
        "It installs pouet.rexx with its helper commands, "
        "sets up the POUET: and POUETTMP: assigns and "
-       "stores the proxy address."))
+       "chooses how files are downloaded."))
 
 (set #bad-os
   "AmigaPouetDownloader requires AmigaOS 2.04 (V37) or higher.")
@@ -125,9 +129,39 @@
        "a reboot and the assign in S:User-Startup would fail.\n\n"
        @askdir-help))
 
+; --- download method --------------------------------------------------------
+(set #ask-fetcher
+  "How should files be downloaded?\nbebboget needs no proxy PC but is slow on 68000.")
+
+(set #ask-fetcher-help
+  (cat "wget: plain HTTP to the proxy PC running the docker container, "
+       "which does HTTPS and redirects on the Amiga's behalf. Fast on "
+       "any CPU, but that PC must be running.\n\n"
+       "bebboget: HTTPS straight from the Amiga, no PC needed. The "
+       "encryption costs CPU time: about 5 kB/s on a 68000, 30-50 kB/s "
+       "on a 68020. It is installed as C:bebboget from this disk.\n\n"
+       "The default follows your CPU, or your previous choice on a "
+       "reinstall. You can change it later with\n"
+       "  setenv pouetfetcher wget|bebboget\n"
+       "and copy ENV:pouetfetcher to ENVARC: to keep it.\n\n"
+       @askchoice-help))
+
+(set #ask-replace-bebboget
+  (cat "C:bebboget is already there.\n"
+       "Replace it with the one on this disk?"))
+
+(set #ask-replace-bebboget-help
+  (cat "The bebboget on this disk is a modified 1.11 that can also talk "
+       "to servers such as files.scene.org, which the Aminet 1.11 cannot. "
+       "Keep yours only if it is a newer release that already does.\n\n"
+       "Sources and licenses are in the licenses drawer of this disk."))
+
 ; --- proxy ------------------------------------------------------------------
 (set #ask-proxy
   "Address of the pouet proxy\n(the PC running docker), as x.x.x.x:9999")
+
+(set #ask-proxy-opt
+  "Proxy PC address, as x.x.x.x:9999 (optional)\nUsed only when a direct download fails.")
 
 (set #ask-proxy-help
   (cat "The script reads this value with \"getenv pouetproxy\" and "
@@ -137,7 +171,11 @@
        "http:// by itself, because a URI scheme must start with a letter "
        "and 192.168.1.10 starts with a digit, so there is no ambiguity.\n\n"
        "The port must match the one exposed in your docker-compose.yml "
-       "(9999 by default).\n\n" @askstring-help))
+       "(9999 by default).\n\n"
+       "With bebboget the proxy is optional: if a direct download fails, "
+       "for example because a server uses a cipher bebboget does not "
+       "support, pouet.rexx retries it with wget through the proxy. "
+       "Leave it empty to have no fallback.\n\n" @askstring-help))
 
 (set #bad-proxy
   "That proxy address is too short to be valid.\nPlease try again.")
@@ -156,7 +194,7 @@
 ; --- progress ---------------------------------------------------------------
 (set #working-rexx  "Copying pouet.rexx...")
 (set #working-c     "Copying the helper commands...")
-(set #working-env   "Setting the pouetproxy variable...")
+(set #working-env   "Setting the environment variables...")
 
 
 ;=============================================================================
@@ -183,6 +221,17 @@
       (dest   (tackon "ENVARC:" #ev-name))
       (append #ev-value)
     )
+  )
+)
+
+; Remove a persistent environment variable from ENV: and ENVARC:.
+; Input: #ev-name
+(procedure P_DelEnvVar
+  (if (exists (tackon "ENV:" #ev-name) (noreq))
+    (delete (tackon "ENV:" #ev-name))
+  )
+  (if (exists (tackon "ENVARC:" #ev-name) (noreq))
+    (delete (tackon "ENVARC:" #ev-name))
   )
 )
 
@@ -264,35 +313,91 @@
   )
 )
 
-; --- proxy address ----------------------------------------------------------
-; Mirror the "length(proxyaddress) < 4" test the arexx script performs, so
-; an empty or nonsense value is caught here instead of at run time.
-;
-; There is no sensible default for this, so the question is always asked:
-; in Novice mode askstring would silently take the default, so the user
-; level is raised to Average around it and put back afterwards. On a
-; reinstall the current value of the variable is offered as the default.
-(set #proxy-default (getenv "pouetproxy"))
-(if (< (strlen #proxy-default) 4)
-  (set #proxy-default "192.168.1.10:9999")
+; The download method and the proxy have no sensible default, so they are
+; always asked: in Novice mode askchoice and askstring would silently take
+; the default, so the user level is raised to Average around them and put
+; back afterwards.
+(set #old-level (user 1))
+
+; --- download method --------------------------------------------------------
+; Preselect the previous choice on a reinstall; otherwise wget on a 68000
+; or 68010, where bebboget manages about 5 kB/s, and bebboget on anything
+; faster.
+(set #fetcher-prev (getenv "pouetfetcher"))
+(set #cpu (database "cpu"))
+(if (= #fetcher-prev "wget")
+  (set #fetch-choice 0)
+  (if (= #fetcher-prev "bebboget")
+    (set #fetch-choice 1)
+    (if (or (= #cpu "68000") (= #cpu "68010"))
+      (set #fetch-choice 0)
+      (set #fetch-choice 1)
+    )
+  )
 )
 
-(set #old-level (user 1))
-(set #proxy "")
-(while (< (strlen #proxy) 4)
+(set #fetch-choice
+  (askchoice
+    (prompt  #ask-fetcher)
+    (help    #ask-fetcher-help)
+    (choices "wget, through the proxy PC"
+             "bebboget, direct HTTPS")
+    (default #fetch-choice)
+  )
+)
+
+(set #fetcher (select #fetch-choice "wget" "bebboget"))
+
+; The floppy's bebboget goes to C: when it is missing, or when the user
+; agrees to replace the one already there.
+(set #install-bebboget 0)
+(if (= #fetcher "bebboget")
+  (if (exists "C:bebboget" (noreq))
+    (set #install-bebboget
+      (askbool
+        (prompt  #ask-replace-bebboget)
+        (help    #ask-replace-bebboget-help)
+        (default 1)
+      )
+    )
+    (set #install-bebboget 1)
+  )
+)
+
+; --- proxy address ----------------------------------------------------------
+; Mandatory with wget, optional with bebboget, where it is only the fallback.
+; Mirror the "length(proxyaddress) < 4" test the arexx script performs, so
+; a nonsense value is caught here instead of at run time. On a reinstall
+; the current value of the variable is offered as the default.
+(set #proxy-default (getenv "pouetproxy"))
+(if (= #fetcher "wget")
+  (
+    (set #proxy-prompt #ask-proxy)
+    (if (< (strlen #proxy-default) 4)
+      (set #proxy-default "192.168.1.10:9999")
+    )
+  )
+  (set #proxy-prompt #ask-proxy-opt)
+)
+
+(set #proxy-ok 0)
+(while (= #proxy-ok 0)
   (
     (set #proxy
       (askstring
-        (prompt  #ask-proxy)
+        (prompt  #proxy-prompt)
         (help    #ask-proxy-help)
         (default #proxy-default)
       )
     )
-    (if (< (strlen #proxy) 4)
+    (if (or (>= (strlen #proxy) 4)
+            (and (= #fetcher "bebboget") (= (strlen #proxy) 0)))
+      (set #proxy-ok 1)
       (message #bad-proxy)
     )
   )
 )
+
 (user #old-level)
 
 ; Tell the Installer where things ended up, for its own final message.
@@ -331,6 +436,25 @@
            "pouet_lastid")
 )
 
+; --- bebboget -----------------------------------------------------------------
+; pouet.rexx runs it as c:bebboget, so the build that suits the CPU goes
+; there under that name: bebboget00 on a 68000 or 68010.
+(if #install-bebboget
+  (
+    (if (or (= #cpu "68000") (= #cpu "68010"))
+      (set #bebboget-src "bebboget00")
+      (set #bebboget-src "bebboget")
+    )
+    (copyfiles
+      (prompt  "Copying " #bebboget-src " to C:bebboget")
+      (help    @copyfiles-help)
+      (source  (tackon #src-c #bebboget-src))
+      (dest    "C:")
+      (newname "bebboget")
+    )
+  )
+)
+
 (complete 50)
 
 ; --- make sure the assign targets exist -------------------------------------
@@ -344,14 +468,25 @@
 
 
 ;=============================================================================
-; 7. ENVIRONMENT VARIABLE
+; 7. ENVIRONMENT VARIABLES
 ;=============================================================================
 
 (working #working-env)
 
-(set #ev-name  "pouetproxy")
-(set #ev-value #proxy)
+(set #ev-name  "pouetfetcher")
+(set #ev-value #fetcher)
 (P_SetEnvVar)
+
+; An empty proxy (bebboget without fallback) must also clear the value left
+; by a previous installation, or pouet.rexx would keep using it.
+(set #ev-name  "pouetproxy")
+(if (> (strlen #proxy) 0)
+  (
+    (set #ev-value #proxy)
+    (P_SetEnvVar)
+  )
+  (P_DelEnvVar)
+)
 
 (complete 75)
 
@@ -391,10 +526,11 @@
 ;=============================================================================
 ; 9. EXTERNAL DEPENDENCY CHECK
 ;
-; wget is the only one we ship: if it is not on the path, the copy in c/
-; goes to C: and the usergroup.library it needs goes to LIBS:. None of the
-; others can be redistributed on this floppy, so all we can do is report
-; which ones are missing and where to get them.
+; wget is the only one we ship. It is needed with the wget method, and with
+; bebboget when a proxy was given for the fallback: if it is not on the
+; path, the copy in c/ goes to C: and the usergroup.library it needs goes
+; to LIBS:. None of the others can be redistributed on this floppy, so all
+; we can do is report which ones are missing and where to get them.
 ;=============================================================================
 
 ; Which, unlike P_CheckTool, looks along the whole path, so a wget the user
@@ -404,7 +540,10 @@
 ; already have one, so an existing copy is never replaced. Not copylib:
 ; InstallerLG's getversion reads 0 from this library, and copylib then
 ; silently copies nothing even when the destination is missing.
-(set #need-wget (<> 0 (run "Which >NIL: wget" (safe))))
+(if (or (= #fetcher "wget") (> (strlen #proxy) 0))
+  (set #need-wget (<> 0 (run "Which >NIL: wget" (safe))))
+  (set #need-wget 0)
+)
 
 (if #need-wget
   (copyfiles
@@ -445,7 +584,8 @@
     (cat "These commands were not found in C:\n"
          "and must be installed by hand:\n\n"
          #missing "\n"
-         "Ignore this if they are elsewhere on your path."))
+         "Ignore this if they are elsewhere on your path.")
+    (all))
 )
 
 (complete 100)
@@ -453,16 +593,21 @@
 
 ;=============================================================================
 ; 10. DONE
+;
+; (all) makes a (message) show up in Novice mode too, which otherwise skips
+; it silently.
 ;=============================================================================
 
 (message
   (cat "Installation complete.\n\n"
        "POUET: " #pouetdir "\n"
        "POUETTMP: " #tmpdir "\n"
-       "pouetproxy: " #proxy "\n\n"
+       "pouetfetcher: " #fetcher "\n"
+       "pouetproxy: " (if (> (strlen #proxy) 0) #proxy "none") "\n\n"
        "With RexxMast running, from a Shell:\n"
        "  rx pouet 93426\n"
-       "  rx pouet party 1550 2016"))
+       "  rx pouet party 1550 2016")
+  (all))
 
 (exit (quiet))
 
