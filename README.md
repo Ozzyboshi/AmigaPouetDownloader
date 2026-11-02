@@ -124,6 +124,13 @@ If you want to use bebboget instead of wget, also add
  ```
 and copy *bebboget* (68020+) or *bebboget00* (68000) from *amiga/c* in this repository to *c:bebboget*. With bebboget the pouetproxy line is optional and only used as a fallback.
 
+The number of tries and the network timeout in seconds, passed to wget and bebboget as *-t* and *-T*, default to 20 and 90. To change them add for example
+ ```
+ SetEnv pouettries 5
+ SetEnv pouettimeout 60
+ ```
+where 0 means no limit. The installer asks for both.
+
 Make sure *wget* is installed and in *c:*, this tool is preinstalled if you are using CoffinOS or Caffeine but they dont come out of the box if you are using old Workbenches like OS3.1. 
 
 The *wget* utility is usually included with the plipbox network boot disk, I think Roadshow also provides his own version. 

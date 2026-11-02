@@ -44,8 +44,9 @@
 ; "Please assign pouettmp:" if those two assigns are missing, so they are
 ; mandatory rather than optional.
 ;
-; The download method and the proxy address end up in ENV:pouetfetcher
-; and ENV:pouetproxy (plus ENVARC:), which pouet.rexx reads at start-up.
+; The download method, the proxy address, the tries and the timeout end up
+; in ENV:pouetfetcher, ENV:pouetproxy, ENV:pouettries and ENV:pouettimeout
+; (plus ENVARC:), which pouet.rexx reads at start-up.
 ; ---------------------------------------------------------------------------
 
 
@@ -180,6 +181,33 @@
 (set #bad-proxy
   "That proxy address is too short to be valid.\nPlease try again.")
 
+; --- tries and timeout ------------------------------------------------------
+(set #ask-tries
+  "How many times should a download be tried?\n0 means no limit.")
+
+(set #ask-tries-help
+  (cat "wget and bebboget retry a download that times out or breaks off, "
+       "waiting 1, 2, 3 ... up to 10 seconds between tries, and continue "
+       "the file where it stopped. Errors that another try cannot fix, "
+       "such as an unknown host or a missing file, are not retried.\n\n"
+       "This is their -t option. You can change it later with\n"
+       "  setenv pouettries 20\n"
+       "and copy ENV:pouettries to ENVARC: to keep it.\n\n"
+       @asknumber-help))
+
+(set #ask-timeout
+  "Network timeout in seconds?\n0 means wait forever.")
+
+(set #ask-timeout-help
+  (cat "How long wget and bebboget wait for the server to accept the "
+       "connection, and then for each piece of data, before giving up "
+       "on that try. It is not a limit on the whole download, which may "
+       "take much longer on a slow Amiga.\n\n"
+       "This is their -T option. You can change it later with\n"
+       "  setenv pouettimeout 90\n"
+       "and copy ENV:pouettimeout to ENVARC: to keep it.\n\n"
+       @asknumber-help))
+
 ; --- startup ----------------------------------------------------------------
 (set #ask-startup
   (cat "Add the POUET: and POUETTMP: assigns\nto S:User-Startup?\n\n"
@@ -313,10 +341,11 @@
   )
 )
 
-; The download method and the proxy have no sensible default, so they are
-; always asked: in Novice mode askchoice and askstring would silently take
-; the default, so the user level is raised to Average around them and put
-; back afterwards.
+; The download method and the proxy have no sensible default, and tries
+; and timeout depend on the network, so they are always asked: in Novice
+; mode askchoice, askstring and asknumber would silently take the default,
+; so the user level is raised to Average around them and put back
+; afterwards.
 (set #old-level (user 1))
 
 ; --- download method --------------------------------------------------------
@@ -395,6 +424,36 @@
       (set #proxy-ok 1)
       (message #bad-proxy)
     )
+  )
+)
+
+; --- tries and timeout ------------------------------------------------------
+; On a reinstall the current values are offered, if they are numbers.
+(set #tries-default 20)
+(set #prev (getenv "pouettries"))
+(if (and (> (strlen #prev) 0) (patmatch "#[0-9]" #prev))
+  (set #tries-default (+ 0 #prev))
+)
+(set #tries
+  (asknumber
+    (prompt  #ask-tries)
+    (help    #ask-tries-help)
+    (range   0 999)
+    (default #tries-default)
+  )
+)
+
+(set #timeout-default 90)
+(set #prev (getenv "pouettimeout"))
+(if (and (> (strlen #prev) 0) (patmatch "#[0-9]" #prev))
+  (set #timeout-default (+ 0 #prev))
+)
+(set #timeout
+  (asknumber
+    (prompt  #ask-timeout)
+    (help    #ask-timeout-help)
+    (range   0 3600)
+    (default #timeout-default)
   )
 )
 
@@ -487,6 +546,14 @@
   )
   (P_DelEnvVar)
 )
+
+(set #ev-name  "pouettries")
+(set #ev-value (cat #tries))
+(P_SetEnvVar)
+
+(set #ev-name  "pouettimeout")
+(set #ev-value (cat #timeout))
+(P_SetEnvVar)
 
 (complete 75)
 
@@ -603,7 +670,8 @@
        "POUET: " #pouetdir "\n"
        "POUETTMP: " #tmpdir "\n"
        "pouetfetcher: " #fetcher "\n"
-       "pouetproxy: " (if (> (strlen #proxy) 0) #proxy "none") "\n\n"
+       "pouetproxy: " (if (> (strlen #proxy) 0) #proxy "none") "\n"
+       "pouettries: " #tries ", pouettimeout: " #timeout " s\n\n"
        "With RexxMast running, from a Shell:\n"
        "  rx pouet 93426\n"
        "  rx pouet party 1550 2016")

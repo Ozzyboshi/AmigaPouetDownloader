@@ -48,6 +48,13 @@ IF fetcher == 'bebboget' THEN DO
 END
 ELSE SAY 'Using proxy address 'proxyaddress
 
+/* -t and -T for wget and bebboget, also set by the installer: tries (0 is
+   no limit) and the connect and read timeout in seconds (0 is none). */
+tries = GetEnv('pouettries')
+IF ~DATATYPE(tries, 'W') | tries < 0 THEN tries = 20
+timeout = GetEnv('pouettimeout')
+IF ~DATATYPE(timeout, 'W') | timeout < 0 THEN timeout = 90
+
 IF pouetid = "party" THEN DO
   PARSE ARG pouetid pouetidend partyyearinput
   partyyearinput=STRIP(partyyearinput)
@@ -395,7 +402,7 @@ GetEnv: PROCEDURE
 /* Download url with the configured method. target is a file name, or with
    todir=1 the directory to save into under the name the url ends with.
    quiet=1 hides the progress output. Returns 1 on success, 0 on failure. */
-Fetch: PROCEDURE EXPOSE fetcher proxyaddress
+Fetch: PROCEDURE EXPOSE fetcher proxyaddress tries timeout
   PARSE ARG url, target, todir, quiet
   IF fetcher == 'bebboget' THEN DO
     file = target
@@ -408,9 +415,9 @@ Fetch: PROCEDURE EXPOSE fetcher proxyaddress
 
 
 /* wget through the proxy PC, which does HTTPS and redirects for us. */
-WgetFetch: PROCEDURE EXPOSE proxyaddress
+WgetFetch: PROCEDURE EXPOSE proxyaddress tries timeout
   PARSE ARG url, target, todir, quiet
-  cmd = 'c:wget'
+  cmd = 'c:wget -t' tries '-T' timeout
   IF quiet THEN cmd = cmd '--quiet'
   IF todir THEN cmd = cmd '-P "'target'"'
   ELSE cmd = cmd '-O "'target'"'
@@ -421,18 +428,23 @@ WgetFetch: PROCEDURE EXPOSE proxyaddress
 
 
 /* bebboget straight to the server. --sloppy skips certificate checks, as
-   the proxy does. bebboget exits with 0 even when the download fails, so
-   the outcome is read from the response headers that -S prints: the last
-   status line wins, since redirects print one per hop. It also leaves
-   chunked transfer encoding in the file, which is undone here. */
-BebboFetch: PROCEDURE
+   the proxy does. Like wget it retries timeouts and broken connections,
+   continuing the file where it stopped, and exits with 0 only on success.
+   The response headers that -S prints tell the status: the last status
+   line wins, since redirects and retries print one each, and 206 is a
+   retry that continued the file. bebboget also leaves chunked transfer
+   encoding in the file, which is undone here. */
+BebboFetch: PROCEDURE EXPOSE tries timeout
   PARSE ARG url, file, quiet
   url = Replace(url, '&amp;', '&')
   hdr = 'pouettmp:pouethdr.txt'
-  cmd = 'c:bebboget --sloppy -q -O -S -o "'file'" "'url'"'
+  cmd = 'c:bebboget --sloppy -q -O -S -t' tries '-T' timeout '-o "'file'" "'url'"'
   IF ~quiet THEN SAY cmd
   ADDRESS COMMAND cmd '>'hdr
+  bgrc = RC
 
+  /* Anything but a header is a message from bebboget: timeouts, retries,
+     errors. */
   status = 0
   chunked = 0
   IF OPEN('hdrf', hdr, 'R') THEN DO
@@ -443,13 +455,13 @@ BebboFetch: PROCEDURE
         chunked = 0
       END
       ELSE IF POS('TRANSFER-ENCODING: CHUNKED', UPPER(line)) > 0 THEN chunked = 1
-      ELSE IF POS('[ERROR]', line) > 0 THEN SAY line
+      ELSE IF LEFT(line, 2) ~== '< ' & line ~== '' THEN SAY line
     END
     CALL CLOSE 'hdrf'
   END
 
-  IF status ~= 200 THEN DO
-    SAY 'bebboget failed, HTTP status' status
+  IF bgrc ~= 0 | (status ~= 200 & status ~= 206) THEN DO
+    SAY 'bebboget failed, HTTP status' status', return code' bgrc
     RETURN 0
   END
   IF chunked THEN

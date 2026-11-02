@@ -14,9 +14,13 @@ Copyright (C) 2024-2025 Stefan "Bebbo" Franke <s.franke@bebbosoft.de>
 License: GNU General Public License, version 3 or (at your option) any
 later version. Some parts are public domain. See bebboget.LICENSE and GPL-3.
 
-This is a MODIFIED version of bebboget 1.11, changed in October 2026 by
-Alessio Garzi to support TLS 1.3 HelloRetryRequest and ECDHE on the
-secp256r1/secp384r1 curves, which servers such as files.scene.org need.
+This is a MODIFIED version of bebboget 1.11, changed in October and
+November 2026 by Alessio Garzi:
+ - TLS 1.3 HelloRetryRequest and ECDHE on the secp256r1/secp384r1 curves,
+   which servers such as files.scene.org need
+ - port 80 by default for http:// URLs
+ - wget-like -t (tries) and -T (connect and read timeout), continuing
+   interrupted downloads, and wget's exit codes
 
 Source code of this modified version:
   https://github.com/Ozzyboshi/bebboget/tree/tls13-hrr-nist-ecdhe
