@@ -305,6 +305,7 @@ if (MyReturnCode = 0) then
         unlha = 'lha x pouettmp:pouetdownload.lha "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'/"'
         address command unlha
         say unlha
+        CALL ExtractAdfs targetdir
         bs = close(ReqF)
         defaultaction=0
       END
@@ -344,6 +345,7 @@ if (MyReturnCode = 0) then
         unzip = 'unzip -n pouettmp:pouetdownload.zip -d "'DESTDIR'parties/'partystripped'/'partyyearstripped'/'reltypestripped'/'titlestripped'"'
         say unzip
         address command unzip
+        CALL ExtractAdfs targetdir
          
         bs = close(ReqF)
         defaultaction=0
@@ -546,6 +548,124 @@ Replace: PROCEDURE
 /* Create directory path, including any missing parents (like mkdir -p).
    MAKEDIR() only creates one level, so walk the path one component at a
    time after the volume/assign part. Returns 1 on success, 0 on failure. */
+/* Unpack the ADF images that an archive left in dir or its subdirectories
+   with adf_extract, keeping the images. A single one goes to dir/adf, as a
+   bare .adf download does, several to dir/adf/<image name>. Returns how
+   many were unpacked. */
+ExtractAdfs: PROCEDURE
+  PARSE ARG dir
+  list = FindAdfs(dir)
+  n = 0
+  DO WHILE list ~== ''
+    PARSE VAR list file '0a'x list
+    n = n + 1
+    adf.n = file
+  END
+  DO i = 1 TO n
+    IF n == 1 THEN out = dir'/adf'
+    ELSE DO
+      name = SUBSTR(adf.i, LASTPOS('/', adf.i) + 1)
+      IF UPPER(RIGHT(name, 4)) == '.ADF' THEN name = LEFT(name, LENGTH(name) - 4)
+      out = dir'/adf/'name
+    END
+    IF ~MakeDirAll(out) THEN ITERATE
+    cmd = 'c:adf_extract "'adf.i'" "'out'"'
+    SAY cmd
+    ADDRESS COMMAND cmd
+    IF RC ~= 0 THEN SAY 'adf_extract failed on' adf.i', return code' RC
+  END
+  RETURN n
+
+
+/* The ADF images with a DOS filesystem under dir, one path per line.
+   An image is a .adf file or one of the size of a DD or HD floppy: names
+   longer than 30 characters lose their end, extension included, when
+   unpacked to FFS or RAM:, so such images are renamed back to .adf.
+   Trackloader disks have no files to unpack and are left alone.
+   Directories called adf hold what an earlier run unpacked and are
+   skipped. */
+FindAdfs: PROCEDURE
+  PARSE ARG dir
+  found = ''
+  files = SHOWDIR(dir, 'F', '0a'x)
+  DO WHILE files ~== ''
+    PARSE VAR files name '0a'x files
+    IF name == '' THEN ITERATE
+    file = dir'/'name
+    size = WORD(STATEF(file), 2)
+    IF UPPER(RIGHT(name, 4)) ~== '.ADF' THEN DO
+      IF size ~= 901120 & size ~= 1802240 THEN ITERATE
+      new = AdfName(dir, name)
+      IF new == '' THEN ITERATE
+      name = new
+      file = dir'/'name
+    END
+    IF ~OPEN('adff', file, 'R') THEN ITERATE
+    magic = READCH('adff', 3)
+    CALL CLOSE 'adff'
+    IF magic == 'DOS' THEN found = found || file'0a'x
+    ELSE SAY name 'is not a DOS disk, not unpacked'
+  END
+  dirs = SHOWDIR(dir, 'D', '0a'x)
+  DO WHILE dirs ~== ''
+    PARSE VAR dirs name '0a'x dirs
+    IF name ~== '' & UPPER(name) ~== 'ADF' THEN
+      found = found || FindAdfs(dir'/'name)
+  END
+  RETURN found
+
+
+/* Rename the image dir/name, whose .adf extension was cut off, to a name
+   of at most 30 characters that ends in .adf, adding _2, _3 ... when the
+   name is taken. If an image with the same contents already has one of
+   these names, this is that image unpacked again by a later run, and it
+   is deleted. Returns the new name, or '' when the image was deleted or
+   cannot be renamed. */
+AdfName: PROCEDURE
+  PARSE ARG dir, name
+  /* Drop what is left of the extension: '.', '.a' or '.ad'. */
+  base = name
+  u = UPPER(name)
+  IF RIGHT(u, 1) == '.' THEN base = LEFT(name, LENGTH(name) - 1)
+  ELSE IF RIGHT(u, 2) == '.A' THEN base = LEFT(name, LENGTH(name) - 2)
+  ELSE IF RIGHT(u, 3) == '.AD' THEN base = LEFT(name, LENGTH(name) - 3)
+  IF base == '' THEN base = 'disk'
+  file = dir'/'name
+  DO k = 1 TO 99
+    IF k == 1 THEN new = LEFT(base, MIN(LENGTH(base), 26))'.adf'
+    ELSE new = LEFT(base, MIN(LENGTH(base), 25 - LENGTH(k)))'_'k'.adf'
+    IF ~EXISTS(dir'/'new) THEN LEAVE
+    IF SameFile(dir'/'new, file) THEN DO
+      CALL DELETE file
+      RETURN ''
+    END
+  END
+  IF EXISTS(dir'/'new) | ~RENAME(file, dir'/'new) THEN DO
+    SAY 'Cannot rename' file 'to' new
+    RETURN ''
+  END
+  SAY 'Renamed' name 'to' new
+  RETURN new
+
+
+/* 1 if files a and b have the same contents. */
+SameFile: PROCEDURE
+  PARSE ARG a, b
+  IF WORD(STATEF(a), 2) ~= WORD(STATEF(b), 2) THEN RETURN 0
+  IF ~OPEN('sfa', a, 'R') THEN RETURN 0
+  IF ~OPEN('sfb', b, 'R') THEN DO
+    CALL CLOSE 'sfa'
+    RETURN 0
+  END
+  same = 1
+  DO WHILE same & ~EOF('sfa')
+    same = READCH('sfa', 65535) == READCH('sfb', 65535)
+  END
+  CALL CLOSE 'sfa'
+  CALL CLOSE 'sfb'
+  RETURN same
+
+
 MakeDirAll: PROCEDURE
   PARSE ARG path
   path = STRIP(path, 'T', '/')
